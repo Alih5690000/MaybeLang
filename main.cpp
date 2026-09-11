@@ -4,7 +4,8 @@
 
 bool isOnlyOneLayerOfBrackets(const std::string& e){
     if (e[0]!='(') return false;
-    for (auto i:e){
+    for (int j=1;j<e.size();j++){
+        char i=e[j];
         if (i=='(') return false;
     }
     if (e.back()!=')'){
@@ -28,6 +29,13 @@ int parseExpression(const std::string& expression) {
     char op='u';
     int sum=0;
     int bracketLevel=0;
+    if (isOnlyOneLayerOfBrackets(expression)){
+        std::string s=expression;
+        s=s.substr(1);
+        s.pop_back();
+        LOG("s is "+s);
+        return parseExpression(s);
+    }
     for (int i=0;i<expression.size();i++){
         LOG(std::string("NUM IS ") + expression[i]);
         if (!isdigit(expression[i])){
@@ -90,5 +98,5 @@ int parseExpression(const std::string& expression) {
 }
 
 int main(){
-    std::cout<<parseExpression("5*5+5")<<std::endl;
+    std::cout<<parseExpression("(5*5+5)")<<std::endl;
 }
