@@ -7,6 +7,9 @@ bool isOnlyOneLayerOfBrackets(const std::string& e){
     for (auto i:e){
         if (i=='(') return false;
     }
+    if (e.back()!=')'){
+        throw std::runtime_error("Unclosed bracket");
+    }
     return true;
 }
 
