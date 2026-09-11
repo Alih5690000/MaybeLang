@@ -9,6 +9,7 @@ int parseExpression(const std::string& expression) {
     int sum=0;
     int bracketLevel=0;
     for (int i=0;i<expression.size();i++){
+        LOG(std::string("NUM IS ") + expression[i]);
         if (!isdigit(expression[i])){
             onlyNum=false;
             LOG("IS NOT ONLYNUM");
@@ -17,22 +18,31 @@ int parseExpression(const std::string& expression) {
             bracketLevel++;
         if (expression[i]==')')
             bracketLevel--;
-        if (expression[i]=='+' || expression[i]=='-' || i==expression.size()){
+        curr+=expression[i];
+        if ((bracketLevel==0 && (expression[i]=='+' || expression[i]=='-'))
+         || (i==expression.size()-1 && !onlyNum)){
+            LOG("OPERATOR DETECTED");
+            if (expression[i]=='+' || expression[i]=='-')
+                curr.pop_back();
             if (op=='u'){
                 sum=parseExpression(curr);
                 LOG("FIRST NUM");
             }
             if (op=='+'){
                 sum+=parseExpression(curr);
+                LOG("PLUS");
             }
             if (op=='-'){
+                LOG("MINUS");
                 sum-=parseExpression(curr);
             }
             op=expression[i];
+            curr.clear();
+            continue;
         }
-        curr+=expression[i];
     }
     if (onlyNum){
+        LOG("ONLYNUM");
         return stoi(expression);
     }
     return sum;
