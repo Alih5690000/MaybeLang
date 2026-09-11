@@ -7,22 +7,33 @@ bool isOnlyOneLayerOfBrackets(const std::string& e){
     for (int j=1;j<e.size();j++){
         char i=e[j];
         if (i=='(') return false;
-    }
-    if (e.back()!=')'){
-        throw std::runtime_error("Unclosed bracket");
+        if (i==')' && j!=e.size()-1) return false;
     }
     return true;
 }
 
 bool hasNoOp(const std::string& e){
+    int bracketLevel=0;
     for (auto i:e){
-        if (i=='+' || i=='-') return false;
+        if (i=='(') bracketLevel++;
+        if (i==')') bracketLevel--;
+        if ((i=='+' || i=='-') && bracketLevel==0) return false;
+    }
+    return true;
+}
+
+bool OnlyNum(const std::string& e){
+    for (auto i:e){
+        if (!isdigit(i)) return false;
     }
     return true;
 }
 
 int parseExpression(const std::string& expression) {
-    bool onlyNum=true;
+    if (OnlyNum(expression)){
+        LOG("ONLYNUM");
+        return stoi(expression);
+    }
     bool noOp=hasNoOp(expression);
     LOG(std::string("NO OP IS ")+std::to_string(noOp));
     std::string curr;
@@ -30,6 +41,7 @@ int parseExpression(const std::string& expression) {
     int sum=0;
     int bracketLevel=0;
     if (isOnlyOneLayerOfBrackets(expression)){
+        LOG("ONLY LAYER");
         std::string s=expression;
         s=s.substr(1);
         s.pop_back();
@@ -39,7 +51,6 @@ int parseExpression(const std::string& expression) {
     for (int i=0;i<expression.size();i++){
         LOG(std::string("NUM IS ") + expression[i]);
         if (!isdigit(expression[i])){
-            onlyNum=false;
             LOG("IS NOT ONLYNUM");
         }
         if (expression[i]=='(')
@@ -48,7 +59,7 @@ int parseExpression(const std::string& expression) {
             bracketLevel--;
         curr+=expression[i];
         if (((bracketLevel==0 && (expression[i]=='+' || expression[i]=='-'))
-         || (i==expression.size()-1 && !onlyNum)) && !noOp){
+         || (i==expression.size()-1)) && !noOp){
             LOG("OPERATOR DETECTED");
             if (expression[i]=='+' || expression[i]=='-')
                 curr.pop_back();
@@ -65,11 +76,12 @@ int parseExpression(const std::string& expression) {
                 sum-=parseExpression(curr);
             }
             op=expression[i];
+            LOG("Curr is "+curr);
             curr.clear();
             continue;
         }
         if (((bracketLevel==0 && (expression[i]=='/' || expression[i]=='*'))
-        || (i==expression.size()-1 && !onlyNum)) && noOp){
+        || (i==expression.size()-1)) && noOp){
             LOG("IDK DETECTED");
             if (expression[i]=='*' || expression[i]=='/')
                 curr.pop_back();
@@ -90,13 +102,31 @@ int parseExpression(const std::string& expression) {
             continue;
         }
     }
-    if (onlyNum){
-        LOG("ONLYNUM");
-        return stoi(expression);
+    if (!curr.empty()){
+        if (op=='u'){
+            sum=parseExpression(curr);
+            LOG("FIRST NUM");
+        }
+        if (op=='+'){
+            sum+=parseExpression(curr);
+            LOG("PLUS");
+        }
+        if (op=='-'){
+            LOG("MINUS");
+            sum-=parseExpression(curr);
+        }
+        if (op=='*'){
+            sum*=parseExpression(curr);
+            LOG("MULTIPLY");
+        }
+        if (op=='/'){
+            LOG("DIVIDE");
+            sum/=parseExpression(curr);
+        }
     }
     return sum;
 }
 
 int main(){
-    std::cout<<parseExpression("(5*5+5)")<<std::endl;
+    std::cout<<parseExpression("5*(5+2)")<<std::endl;
 }
