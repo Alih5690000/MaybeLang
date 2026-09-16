@@ -264,7 +264,7 @@ class FunctionObject:public BasicObj{
   public:
     std::vector<std::string> params;
     std::string body;
-    FunctionObject(const std::vector<std::string>& p,const std::string& b):params(p),body(b){};
+    FunctionObject(const std::vector<std::string>& p, const std::string& b):params(p),body(b){};
 
     Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace& context) override{
       if (args.size()!=params.size()) throw ValueError("Incorrect number of arguments");

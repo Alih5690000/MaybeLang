@@ -330,7 +330,7 @@ int main() {
     std::cout << "C\n";
 
     n["print"] = MakePtr<BasicObj>(
-        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args) {
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args) -> Pointer<BasicObj> {
             std::cout << "INSIDE PRINT\n";
 
             for (auto& arg : args)
@@ -341,11 +341,18 @@ int main() {
             return MakePtr<BasicObj>(new IntObj(0));
         })
     );
+    n["input"] = MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args) -> Pointer<BasicObj> {
+            std::string input;
+            std::getline(std::cin, input);
+            return MakePtr<BasicObj>(new StringObject(input));
+        })
+    );
 
     std::cout << "D\n";
 
     std::cout << "D1\n";
-    auto result = parseExpression("if(1==1){print(\"lol\")}", n); //if(1==1){print(\"lol\")}
+auto result = parseExpression("a=input() print(a) if (a==\"lol\") { print(\"lol\") }", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";
