@@ -213,6 +213,51 @@ class StringObject:public BasicObj{
     }
 };
 
+class BoolObject:public BasicObj{
+    public:
+    bool value;
+    BoolObject(bool v):value(v){};
+
+    int asInt() override{
+      return value ? 1 : 0;
+    }
+
+    bool asBool() override{
+      return value;
+    }
+
+    bool asbool() override{
+      return value;
+    }
+
+    std::string str() override{
+      return value ? "true" : "false";
+    }
+
+    bool greater(Pointer<BasicObj> other,bool) override{
+      return value>asBoolValue(other);
+    }
+
+    bool less(Pointer<BasicObj> other,bool) override{
+      return value<asBoolValue(other);
+    }
+
+    bool equal(Pointer<BasicObj> other,bool) override{
+      return value==asBoolValue(other);
+    }
+
+    Pointer<BasicObj> clone() override{
+      return MakePtr<BasicObj>(new BoolObject(value));
+    }
+
+    private:
+    bool asBoolValue(Pointer<BasicObj> other){
+      BoolObject* boolean=dynamic_cast<BoolObject*>(other.get());
+      if (boolean==nullptr) throw ValueError("Expected a boolean");
+      return boolean->value;
+    }
+};
+
 Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& context);
 
 class FunctionObject:public BasicObj{

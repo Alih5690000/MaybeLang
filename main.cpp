@@ -14,31 +14,40 @@ bool isOnlyOneLayerOfBrackets(const std::string& e){
 
 bool hasNoOp(const std::string& e){
     int bracketLevel=0;
-    for (auto i:e){
-        if (i=='(') bracketLevel++;
-        if (i==')') bracketLevel--;
-        if ((i=='+' || i=='-') && bracketLevel==0) return false;
+    for (int i=0;i<e.size();i++){
+        if (e[i]=='(') bracketLevel++;
+        if (e[i]==')') bracketLevel--;
+        if (bracketLevel==0 && (
+                e.substr(i,2)=="==" ||
+                e.substr(i,2)=="!=" ||
+                e.substr(i,2)==">=" ||
+                e.substr(i,2)=="<=" ||
+                e[i]=='>' ||
+                e[i]=='<'))
+            return false;
     }
     return true;
 }
 
 bool OnlyNum(const std::string& e){
-    for (auto i:e){
-        if (!isdigit(i)) return false;
+    for (int i=0;i<e.size();i++){
+        if (!isdigit(e[i])) return false;
     }
     return true;
 }
 
 bool OnlyName(const std::string& e){
-    for (auto i:e){
-        if (!isalpha(i)) return false;
+    for (int i=0;i<e.size();i++){
+        if (!isalpha(e[i])) return false;
     }
     return true;
 }
 
 bool startsWithOnlyName(const std::string& e, std::string& remaining, std::string& beggining){
     for (int i=0;i<e.size();i++){
-        if (e[i]=='(' || e[i]=='[' || e[i]=='.' || e[i]=='='){
+        if (e[i]=='(' || e[i]=='[' || e[i]=='.' || e[i]=='=' || 
+            e.substr(i, 2)=="==" || e.substr(i, 2)=="!=" || e.substr(i, 2)==">=" || 
+            e.substr(i, 2)=="<=" || e[i]=='>' || e[i]=='<'){
             remaining = e.substr(i);
             beggining = e.substr(0, i);
             return true;
@@ -48,11 +57,15 @@ bool startsWithOnlyName(const std::string& e, std::string& remaining, std::strin
     return false;
 }
 
-bool isStringLiteral(const std::string& e){
-    if (e[0]!='"') return false;
-    for (int i=1;i<e.size();i++){
-        if (e[i]=='"' && i!=e.size()-1) return false;
+bool isStringLiteral(const std::string& e) {
+    if (e.size() < 2 || e.front() != '"' || e.back() != '"')
+        return false;
+
+    for (size_t i = 1; i < e.size() - 1; i++) {
+        if (e[i] == '"' && (i == 0 || e[i - 1] != '\\'))
+            return false;
     }
+
     return true;
 }
 
@@ -85,12 +98,73 @@ std::vector<std::string> splitBy(std::string s, char delimiter) {
 }
 
 Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& context) {
+    LOG("Parsing expression: " + expression + "\n");
+    if (expression.starts_with("if")){
+            int i=0;
+            LOG("IF DETECTED");
+            i++;
+            std::string condition;
+            i++;
+            if (expression[i]!='(') throw ValueError("Expected '(' after 'if'");
+            i++;
+            int bracketLevel=1;
+            while (bracketLevel>0 && i<expression.size()){
+                if (expression[i]=='(') bracketLevel++;
+                if (expression[i]==')'){ 
+                    bracketLevel--;
+                    if (bracketLevel==0) break;
+                }
+                condition+=expression[i];
+                i++;
+            }
+            LOG("Condition is "+condition);
+            if (bracketLevel!=0) throw ValueError("Mismatched parentheses in 'if' condition");
+            std::string thenExpr;
+            i++;
+            if (expression[i]!='{') throw ValueError("Expected '{' after 'if' condition");
+            i++;
+            int bracketLevel2=1;
+            while (bracketLevel2>0 && i<expression.size()){
+                if (expression[i]=='{') bracketLevel2++;
+                else if (expression[i]=='}') bracketLevel2--;
+                else thenExpr+=expression[i];
+                i++;
+            }
+            LOG("Then expression is "+thenExpr);
+            if (bracketLevel2!=0) throw ValueError("Mismatched braces in 'if' expression");
+            std::string elseExpr;
+            if (expression.substr(i, 4)=="else"){
+                i+=4;
+                if (expression[i]!='{') throw ValueError("Expected '{' after 'else'");
+                i++;
+                int bracketLevel2=1;
+                while (bracketLevel2>0 && i<expression.size()){
+                    if (expression[i]=='{') bracketLevel2++;
+                    else if (expression[i]=='}') bracketLevel2--;
+                    else elseExpr+=expression[i];
+                    i++;
+                }
+                if (bracketLevel2!=0) throw ValueError("Mismatched braces in 'else' expression");
+            }
+            Pointer<BasicObj> condResult = parseExpression(condition, context);
+            if (condResult->asbool()) {
+                return parseExpression(thenExpr, context);
+            } else if (!elseExpr.empty()) {
+                return parseExpression(elseExpr, context);
+            } else {
+                return MakePtr<BasicObj>(new IntObj(0)); // or some other default value
+            }
+        }
     if (OnlyNum(expression)){
         LOG("ONLYNUM");
         return MakePtr<BasicObj>(new IntObj(stoi(expression)));
     }
     if (OnlyName(expression)){
         return context[expression];
+    }
+    if (isStringLiteral(expression)) {
+        std::string strValue = expression.substr(1, expression.size() - 2);
+        return MakePtr<BasicObj>(new StringObject(strValue));
     }
     std::string remaining;
     std::string beggining;
@@ -132,8 +206,8 @@ Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& cont
     bool noOp=hasNoOp(expression);
     LOG(std::string("NO OP IS ")+std::to_string(noOp));
     std::string curr;
-    char op='u';
-    int sum=0;
+    std::string op="u";
+    Pointer<BasicObj> sum=MakePtr<BasicObj>(new BasicObj);
     int bracketLevel=0;
     int bracketLevel2=0;
     int bracketLevel3=0;
@@ -162,74 +236,37 @@ Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& cont
             bracketLevel3++;
         if (expression[i]==']')
             bracketLevel3--;
-        if (bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0 && expression.substr(i, 2)=="if"){
-            i++;
-            std::string condition;
-            i++;
-            if (expression[i]!='(') throw ValueError("Expected '(' after 'if'");
-            i++;
-            bracketLevel=1;
-            while (bracketLevel>0 && i<expression.size()){
-                if (expression[i]=='(') bracketLevel++;
-                if (expression[i]==')') bracketLevel--;
-                condition+=expression[i];
-                i++;
-            }
-            if (bracketLevel!=0) throw ValueError("Mismatched parentheses in 'if' condition");
-            std::string thenExpr;
-            if (expression[i]!='{') throw ValueError("Expected '{' after 'if' condition");
-            i++;
-            bracketLevel2=1;
-            while (bracketLevel2>0 && i<expression.size()){
-                if (expression[i]=='{') bracketLevel2++;
-                else if (expression[i]=='}') bracketLevel2--;
-                else thenExpr+=expression[i];
-                i++;
-            }
-            if (bracketLevel2!=0) throw ValueError("Mismatched braces in 'if' expression");
-            std::string elseExpr;
-            if (expression.substr(i, 4)=="else"){
-                i+=4;
-                if (expression[i]!='{') throw ValueError("Expected '{' after 'else'");
-                i++;
-                bracketLevel2=1;
-                while (bracketLevel2>0 && i<expression.size()){
-                    if (expression[i]=='{') bracketLevel2++;
-                    else if (expression[i]=='}') bracketLevel2--;
-                    else elseExpr+=expression[i];
-                    i++;
-                }
-                if (bracketLevel2!=0) throw ValueError("Mismatched braces in 'else' expression");
-            }
-            Pointer<BasicObj> condResult = parseExpression(condition, context);
-            if (condResult->asbool()) {
-                return parseExpression(thenExpr, context);
-            } else if (!elseExpr.empty()) {
-                return parseExpression(elseExpr, context);
-            } else {
-                return MakePtr<BasicObj>(new IntObj(0)); // or some other default value
-            }
-        }
         
         curr+=expression[i];
-        if (((bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0 && (expression[i]=='+' || expression[i]=='-'))
+        if (((bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0 && (expression[i]=='+' || expression[i]=='-'
+        || expression.substr(i, 2)=="==" || expression.substr(i, 2)=="!=" || expression.substr(i, 2)==">="))
          || (i==expression.size()-1)) && !noOp){
             LOG("OPERATOR DETECTED");
-            if (expression[i]=='+' || expression[i]=='-')
+            if (expression[i]=='+' || expression[i]=='-' || expression.substr(i, 2)=="==" 
+            || expression.substr(i, 2)=="!=" || expression.substr(i, 2)==">=")
                 curr.pop_back();
-            if (op=='u'){
-                sum=parseExpression(curr, context)->asInt();
+            if (op=="u"){
+                sum=parseExpression(curr, context);
                 LOG("FIRST NUM");
             }
-            if (op=='+'){
-                sum+=parseExpression(curr, context)->asInt();
+            if (op=="+"){
+                sum=MakePtr<BasicObj>(new IntObj(sum->asInt() + parseExpression(curr, context)->asInt()));
                 LOG("PLUS");
             }
-            if (op=='-'){
+            if (op=="-"){
                 LOG("MINUS");
-                sum-=parseExpression(curr, context)->asInt();
+                sum=MakePtr<BasicObj>(new IntObj(sum->asInt() - parseExpression(curr, context)->asInt()));
             }
-            op=expression[i];
+            if (op=="=="){
+                sum=MakePtr<BasicObj>(new BoolObject(sum->equal(parseExpression(curr, context), false)));
+            }
+            if (expression.substr(i, 2)=="==" || expression.substr(i, 2)=="!=" || expression.substr(i, 2)==">="){
+                op=expression.substr(i, 2);
+                i++;
+            }
+            else{
+                op=expression[i];
+            }
             LOG("Curr is "+curr);
             curr.clear();
             continue;
@@ -239,17 +276,17 @@ Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& cont
             LOG("IDK DETECTED");
             if (expression[i]=='*' || expression[i]=='/')
                 curr.pop_back();
-            if (op=='u'){
-                sum=parseExpression(curr, context)->asInt();
+            if (op=="u"){
+                sum=parseExpression(curr, context);
                 LOG("FIRST NUM");
             }
-            if (op=='*'){
-                sum*=parseExpression(curr, context)->asInt();
+            if (op=="*" ){
+                sum=MakePtr<BasicObj>(new IntObj(sum->asInt() * parseExpression(curr, context)->asInt()));
                 LOG("MULTIPLY");
             }
-            if (op=='/'){
+            if (op=="/"){
                 LOG("DIVIDE");
-                sum/=parseExpression(curr, context)->asInt();
+                sum=MakePtr<BasicObj>(new IntObj(sum->asInt() / parseExpression(curr, context)->asInt()));
             }
             op=expression[i];
             curr.clear();
@@ -257,39 +294,62 @@ Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& cont
         }
     }
     if (!curr.empty()){
-        if (op=='u'){
-            sum=parseExpression(curr, context)->asInt();
+        if (op=="u"){
+            sum=parseExpression(curr, context);
             LOG("FIRST NUM");
         }
-        if (op=='+'){
-            sum+=parseExpression(curr, context)->asInt();
+        if (op=="+"){
+            sum=MakePtr<BasicObj>(new IntObj(sum->asInt() + parseExpression(curr, context)->asInt()));
             LOG("PLUS");
         }
-        if (op=='-'){
+        if (op=="-"){
             LOG("MINUS");
-            sum-=parseExpression(curr, context)->asInt();
+            sum=MakePtr<BasicObj>(new IntObj(sum->asInt() - parseExpression(curr, context)->asInt()));
         }
-        if (op=='*'){
-            sum*=parseExpression(curr, context)->asInt();
+        if (op=="*"){
+            sum=MakePtr<BasicObj>(new IntObj(sum->asInt() * parseExpression(curr, context)->asInt()));
             LOG("MULTIPLY");
         }
-        if (op=='/'){
+        if (op=="-"){
             LOG("DIVIDE");
-            sum/=parseExpression(curr, context)->asInt();
+            sum=MakePtr<BasicObj>(new IntObj(sum->asInt() / parseExpression(curr, context)->asInt()));
         }
     }
-    return MakePtr<BasicObj>(new IntObj(sum));
+    return sum;
 }
 
-int main(){
+int main() {
+    std::cout << "A\n";
+
     Namespace n;
-    n["lol"]=MakePtr<BasicObj>(new IntObj(5));
-    n["print"]=MakePtr<BasicObj>(new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args){
-        for (auto& arg : args) {
-            std::cout << arg->str() << " ";
-        }
-        std::cout << std::endl;
-        return MakePtr<BasicObj>(new IntObj(0));
-    }));
-    std::cout<<parseExpression("if(1==1){print(4)}", n)->str()<<std::endl;
+
+    std::cout << "B\n";
+
+    n["lol"] = MakePtr<BasicObj>(new IntObj(5));
+
+    std::cout << "C\n";
+
+    n["print"] = MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args) {
+            std::cout << "INSIDE PRINT\n";
+
+            for (auto& arg : args)
+                std::cout << arg->str() << " ";
+
+            std::cout << std::endl;
+
+            return MakePtr<BasicObj>(new IntObj(0));
+        })
+    );
+
+    std::cout << "D\n";
+
+    std::cout << "D1\n";
+    auto result = parseExpression("if(1==1){print(\"lol\")}", n); //if(1==1){print(\"lol\")}
+    std::cout << "D2\n";
+
+    std::cout << "E\n";
+
+    std::cout << result->str() << std::endl;
+    return 0;
 }
