@@ -138,3 +138,74 @@ class IntObj:public BasicObj{
       return integer->value;
     }
 };
+
+class StringObject:public BasicObj{
+    public:
+    std::string value;
+    StringObject(const std::string& v):value(v){};
+
+    Pointer<BasicObj> add(Pointer<BasicObj> other,bool swapped) override{
+      if (auto string=dynamic_cast<StringObject*>(other.get())){
+        return MakePtr<BasicObj>(new StringObject(value+string->value));
+      }
+      if (!swapped)
+        return other->add(MakePtr<BasicObj>(new StringObject(value)),true);
+      throw ValueError("Cannot add non-string object to string");
+    }
+
+    Pointer<BasicObj> sub(Pointer<BasicObj> other,bool swapped) override{
+      if (!swapped)
+        return other->sub(MakePtr<BasicObj>(new StringObject(value)),true);
+      throw ValueError("Cannot subtract from string");
+    }
+
+    Pointer<BasicObj> mul(Pointer<BasicObj> other,bool swapped) override{
+      if (auto integer=dynamic_cast<IntObj*>(other.get())){
+        if (integer->value<0) throw ValueError("Cannot multiply string by a negative integer");
+        std::string result;
+        for (int count=0;count<integer->value;count++)
+          result+=value;
+        return MakePtr<BasicObj>(new StringObject(result));
+      }
+      if (!swapped)
+        return other->mul(MakePtr<BasicObj>(new StringObject(value)),true);
+      throw ValueError("Cannot multiply string by non-integer object");
+    }
+
+    Pointer<BasicObj> div(Pointer<BasicObj> other,bool swapped) override{
+      if (!swapped)
+        return other->div(MakePtr<BasicObj>(new StringObject(value)),true);
+      throw ValueError("Cannot divide string");
+    }
+
+    std::string str() override{
+      return value;
+    }
+
+    bool greater(Pointer<BasicObj> other,bool) override{
+      return value>asString(other);
+    }
+
+    bool less(Pointer<BasicObj> other,bool) override{
+      return value<asString(other);
+    }
+
+    bool equal(Pointer<BasicObj> other,bool) override{
+      return value==asString(other);
+    }
+
+    bool asbool() override{
+      return !value.empty();
+    }
+
+    Pointer<BasicObj> clone() override{
+      return MakePtr<BasicObj>(new StringObject(value));
+    }
+
+    private:
+    std::string asString(Pointer<BasicObj> other){
+      StringObject* string=dynamic_cast<StringObject*>(other.get());
+      if (string==nullptr) throw ValueError("Expected a string");
+      return string->value;
+    }
+};
