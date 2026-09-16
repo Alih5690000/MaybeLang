@@ -58,6 +58,7 @@ Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& cont
     char op='u';
     int sum=0;
     int bracketLevel=0;
+    int bracketLevel2=0;
     if (isOnlyOneLayerOfBrackets(expression)){
         LOG("ONLY LAYER");
         std::string s=expression;
@@ -75,6 +76,10 @@ Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& cont
             bracketLevel++;
         if (expression[i]==')')
             bracketLevel--;
+        if (expression[i]=='{')
+            bracketLevel2++;
+        if (expression[i]=='{')
+            bracketLevel2--;
         curr+=expression[i];
         if (((bracketLevel==0 && (expression[i]=='+' || expression[i]=='-'))
          || (i==expression.size()-1)) && !noOp){

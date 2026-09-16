@@ -40,6 +40,7 @@ class BasicObj{
     virtual bool asbool(){throw NotAvailable("That is Base class (asbool)");};
     virtual void free(){throw NotAvailable("That is Base class (free)");};
     virtual int asInt(){throw NotAvailable("That is Base class (asInt)");};
+    virtual bool asBool(){throw NotAvailable("That is Base class (asBool)");};
     virtual Pointer<BasicObj> getattr(const std::string& s){
       auto it = attrs.find(s);
       if (it==attrs.end()) throw ValueError(("Attribute "+s+" not found").c_str());
