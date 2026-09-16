@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include "classes.hpp"
 #define LOG(x) std::cout<<x<<std::endl
 
 bool isOnlyOneLayerOfBrackets(const std::string& e){
@@ -29,10 +30,10 @@ bool OnlyNum(const std::string& e){
     return true;
 }
 
-int parseExpression(const std::string& expression) {
+Pointer<BasicObj> parseExpression(const std::string& expression) {
     if (OnlyNum(expression)){
         LOG("ONLYNUM");
-        return stoi(expression);
+        return MakePtr<BasicObj>(new IntObj(stoi(expression)));
     }
     bool noOp=hasNoOp(expression);
     LOG(std::string("NO OP IS ")+std::to_string(noOp));
@@ -64,16 +65,16 @@ int parseExpression(const std::string& expression) {
             if (expression[i]=='+' || expression[i]=='-')
                 curr.pop_back();
             if (op=='u'){
-                sum=parseExpression(curr);
+                sum=parseExpression(curr)->asInt();
                 LOG("FIRST NUM");
             }
             if (op=='+'){
-                sum+=parseExpression(curr);
+                sum+=parseExpression(curr)->asInt();
                 LOG("PLUS");
             }
             if (op=='-'){
                 LOG("MINUS");
-                sum-=parseExpression(curr);
+                sum-=parseExpression(curr)->asInt();
             }
             op=expression[i];
             LOG("Curr is "+curr);
@@ -86,16 +87,16 @@ int parseExpression(const std::string& expression) {
             if (expression[i]=='*' || expression[i]=='/')
                 curr.pop_back();
             if (op=='u'){
-                sum=parseExpression(curr);
+                sum=parseExpression(curr)->asInt();
                 LOG("FIRST NUM");
             }
             if (op=='*'){
-                sum*=parseExpression(curr);
+                sum*=parseExpression(curr)->asInt();
                 LOG("MULTIPLY");
             }
             if (op=='/'){
                 LOG("DIVIDE");
-                sum/=parseExpression(curr);
+                sum/=parseExpression(curr)->asInt();
             }
             op=expression[i];
             curr.clear();
@@ -104,29 +105,29 @@ int parseExpression(const std::string& expression) {
     }
     if (!curr.empty()){
         if (op=='u'){
-            sum=parseExpression(curr);
+            sum=parseExpression(curr)->asInt();
             LOG("FIRST NUM");
         }
         if (op=='+'){
-            sum+=parseExpression(curr);
+            sum+=parseExpression(curr)->asInt();
             LOG("PLUS");
         }
         if (op=='-'){
             LOG("MINUS");
-            sum-=parseExpression(curr);
+            sum-=parseExpression(curr)->asInt();
         }
         if (op=='*'){
-            sum*=parseExpression(curr);
+            sum*=parseExpression(curr)->asInt();
             LOG("MULTIPLY");
         }
         if (op=='/'){
             LOG("DIVIDE");
-            sum/=parseExpression(curr);
+            sum/=parseExpression(curr)->asInt();
         }
     }
-    return sum;
+    return MakePtr<BasicObj>(new IntObj(sum));
 }
 
 int main(){
-    std::cout<<parseExpression("5*(5+2)")<<std::endl;
+    std::cout<<parseExpression("5*(5+2)")->str()<<std::endl;
 }
