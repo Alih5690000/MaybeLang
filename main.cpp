@@ -155,6 +155,55 @@ Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& cont
                 return MakePtr<BasicObj>(new IntObj(0)); // or some other default value
             }
         }
+    if (expression.starts_with("for")){
+        int i=3;
+        if (expression[i]!='(') throw ValueError("Expected '(' after 'for'");
+        i++;
+        std::string initExpr;
+        while (i<expression.size() && expression[i]!=';'){
+            initExpr+=expression[i];
+            i++;
+        }
+        if (i>=expression.size() || expression[i]!=';') throw ValueError("Expected ';' after 'for' initialization");
+        i++;
+        std::string conditionExpr;
+        while (i<expression.size() && expression[i]!=';'){
+            conditionExpr+=expression[i];
+            i++;
+        }
+        if (i>=expression.size() || expression[i]!=';') throw ValueError("Expected ';' after 'for' condition");
+        i++;
+        std::string stepExpr;
+        while (i<expression.size() && expression[i]!=')'){
+            stepExpr+=expression[i];
+            i++;
+        }
+        if (i>=expression.size() || expression[i]!=')') throw ValueError("Expected ')' after 'for' step");
+        i++;
+        if (expression[i]!='{') throw ValueError("Expected '{' after 'for' loop header");
+        i++;
+        std::string bodyExpr;
+        int bracketLevel=1;
+        while (bracketLevel>0 && i<expression.size()){
+            if (expression[i]=='{') bracketLevel++;
+            else if (expression[i]=='}') {
+                bracketLevel--;
+                if (bracketLevel==0) break;
+            }
+            else bodyExpr+=expression[i];
+            i++;
+        }
+        if (bracketLevel!=0) throw ValueError("Mismatched braces in 'for' loop body");
+        auto initResult = parseExpression(initExpr, context);
+        auto condResult = parseExpression(conditionExpr, context);
+        auto stepResult = parseExpression(stepExpr, context);
+        while (condResult->asbool()) {
+            parseExpression(bodyExpr, context);
+            stepResult = parseExpression(stepExpr, context);
+            condResult = parseExpression(conditionExpr, context);
+        }
+        return MakePtr<BasicObj>(new IntObj(0)); // or some other default value
+    }
     if (OnlyNum(expression)){
         LOG("ONLYNUM");
         return MakePtr<BasicObj>(new IntObj(stoi(expression)));
@@ -260,6 +309,15 @@ Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& cont
             if (op=="=="){
                 sum=MakePtr<BasicObj>(new BoolObject(sum->equal(parseExpression(curr, context), false)));
             }
+            if (op=="!="){
+                sum=MakePtr<BasicObj>(new BoolObject(!sum->equal(parseExpression(curr, context), false)));
+            }
+            if (op==">="){
+                sum=MakePtr<BasicObj>(new BoolObject(sum->greater(parseExpression(curr, context), false) || sum->equal(parseExpression(curr, context), false)));
+            }
+            if (op=="<="){
+                sum=MakePtr<BasicObj>(new BoolObject(sum->less(parseExpression(curr, context), false) || sum->equal(parseExpression(curr, context), false)));
+            }
             if (expression.substr(i, 2)=="==" || expression.substr(i, 2)=="!=" || expression.substr(i, 2)==">="){
                 op=expression.substr(i, 2);
                 i++;
@@ -352,7 +410,7 @@ int main() {
     std::cout << "D\n";
 
     std::cout << "D1\n";
-auto result = parseExpression("a=input() print(a) if (a==\"lol\") { print(\"lol\") }", n); //if(1==1){print(\"lol\")}
+    auto result = parseExpression("a=input() print(a) if (a==\"lol\") { print(\"lol\") }", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";
