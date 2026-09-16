@@ -2,6 +2,8 @@
 #include <map>
 #include <vector>
 #include "memory.hpp"
+
+
 class NotAvailable:public std::exception{
   public:
   std::string mes;
@@ -208,5 +210,40 @@ class StringObject:public BasicObj{
       StringObject* string=dynamic_cast<StringObject*>(other.get());
       if (string==nullptr) throw ValueError("Expected a string");
       return string->value;
+    }
+};
+
+Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& context);
+
+class FunctionObject:public BasicObj{
+  public:
+    std::vector<std::string> params;
+    std::string body;
+    FunctionObject(const std::vector<std::string>& p,const std::string& b):params(p),body(b){};
+
+    Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace& context) override{
+      if (args.size()!=params.size()) throw ValueError("Incorrect number of arguments");
+      Namespace localContext=context;
+      for (size_t i=0;i<params.size();i++){
+        localContext[params[i]]=args[i];
+      }
+      return parseExpression(body,localContext);
+    }
+
+    Pointer<BasicObj> clone() override{
+      return MakePtr<BasicObj>(new FunctionObject(params,body));
+    }
+};
+
+class NativeFunctionObject:public BasicObj{
+  public:
+    Pointer<BasicObj> (*func)(std::vector<Pointer<BasicObj>>);
+    NativeFunctionObject(Pointer<BasicObj> (*f)(std::vector<Pointer<BasicObj>>)):func(f){};
+
+    Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace&) override{
+      return func(args);
+    }
+    Pointer<BasicObj> clone() override{
+      return MakePtr<BasicObj>(new NativeFunctionObject(func));
     }
 };
