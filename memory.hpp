@@ -42,7 +42,55 @@ LOG("Pointer copy constructor");
 
 _block=o._block;
 
-o._block->_refcount++;
+if (_block)
+
+_block->_refcount++;
+
+}
+
+Pointer<T>& operator=(const Pointer<T>& o){
+
+if (this==&o)
+
+return *this;
+
+if (_block && --_block->_refcount==0)
+
+delete _block;
+
+_block=o._block;
+
+if (_block)
+
+_block->_refcount++;
+
+return *this;
+
+}
+
+Pointer(Pointer<T>&& o) noexcept{
+
+_block=o._block;
+
+o._block=nullptr;
+
+}
+
+Pointer<T>& operator=(Pointer<T>&& o) noexcept{
+
+if (this==&o)
+
+return *this;
+
+if (_block && --_block->_refcount==0)
+
+delete _block;
+
+_block=o._block;
+
+o._block=nullptr;
+
+return *this;
 
 }
 

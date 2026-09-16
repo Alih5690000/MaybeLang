@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include "classes.hpp"
-#define LOG(x) std::cout<<x<<std::endl
 
 bool isOnlyOneLayerOfBrackets(const std::string& e){
     if (e[0]!='(') return false;
@@ -149,5 +148,6 @@ Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& cont
 int main(){
     Namespace n;
     n["lol"]=MakePtr<BasicObj>(new IntObj(5));
+    std::cout<<"idk "<<n["lol"]->str()<<std::endl;
     std::cout<<parseExpression("lol+6", n)->str()<<std::endl;
 }
