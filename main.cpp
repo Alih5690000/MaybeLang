@@ -300,7 +300,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
          || (i==expression.size()-1)) && !noOp)){
             LOG("OPERATOR DETECTED");
             if (expression[i]=='+' || expression[i]=='-' || expression.substr(i, 2)=="==" 
-            || expression.substr(i, 2)=="!=" || expression.substr(i, 2)==">=")
+            || expression.substr(i, 2)=="!=" || expression[i]=='>' || expression[i]=='<')
                 curr.pop_back();
             if (op=="u"){
                 sum=parseExpression(curr, context);
@@ -320,13 +320,13 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             if (op=="!="){
                 sum=MakePtr<BasicObj>(new BoolObject(!sum->equal(parseExpression(curr, context), false)));
             }
-            if (op==">="){
-                sum=MakePtr<BasicObj>(new BoolObject(sum->greater(parseExpression(curr, context), false) || sum->equal(parseExpression(curr, context), false)));
+            if (op==">"){
+                sum=MakePtr<BasicObj>(new BoolObject(sum->greater(parseExpression(curr, context), false)));
             }
-            if (op=="<="){
-                sum=MakePtr<BasicObj>(new BoolObject(sum->less(parseExpression(curr, context), false) || sum->equal(parseExpression(curr, context), false)));
+            if (op=="<"){
+                sum=MakePtr<BasicObj>(new BoolObject(sum->less(parseExpression(curr, context), false)));
             }
-            if (expression.substr(i, 2)=="==" || expression.substr(i, 2)=="!=" || expression.substr(i, 2)==">="){
+            if (expression.substr(i, 2)=="==" || expression.substr(i, 2)=="!="){
                 op=expression.substr(i, 2);
                 i++;
             }
@@ -418,7 +418,7 @@ int main() {
     std::cout << "D\n";
 
     std::cout << "D1\n";
-    auto result = parseExpression("for(i=0;i<10;i++){print(i)}", n); //if(1==1){print(\"lol\")}
+    auto result = parseExpression("for(i=0;i<10;i=i+1){print(i)}", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";
