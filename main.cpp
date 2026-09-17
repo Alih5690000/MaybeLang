@@ -122,6 +122,49 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
         }
         return dict;
     }
+    if (expression.starts_with("func(")){
+        std::string name;
+        int i=5;
+        while (i<expression.size() && expression[i]!=')') {
+            name+=expression[i];
+            i++;
+        }
+        if (i>=expression.size() || expression[i]!=')') throw ValueError("Expected ')' after function name");
+        std::string insideBrackets;
+        i+=2;
+        int bracketLevel=1;
+        while (bracketLevel>0 && i<expression.size()){
+            if (expression[i]=='(') bracketLevel++;
+            else if (expression[i]==')') {
+                bracketLevel--;
+                if (bracketLevel==0) break;
+            }
+            else insideBrackets+=expression[i];
+            i++;
+        }
+        auto res=splitBy(insideBrackets,',');
+        std::vector<std::string> params;
+        for (auto &r:res){
+            params.push_back(r);
+        }
+        i++;
+        if (i>=expression.size() || expression[i]!='{') throw ValueError("Expected '{' after function parameters");
+        std::string body;
+        i++;
+        int bracketLevel2=1;
+        while (bracketLevel2>0 && i<expression.size()){
+            if (expression[i]=='{') bracketLevel2++;
+            else if (expression[i]=='}') {
+                bracketLevel2--;
+                if (bracketLevel2==0) break;
+            }
+            else body+=expression[i];
+            i++;
+        }
+        Pointer<BasicObj> funcObj=MakePtr<BasicObj>(new FunctionObject(params,body));
+        context[name]=funcObj;
+        return funcObj;
+    }
     if (expression.starts_with("if(")){
             int i=0;
             LOG("IF DETECTED");
@@ -522,7 +565,7 @@ int main() {
     std::cout << "D\n";
 
     std::cout << "D1\n";
-    doCode("a={a:5};print(a.a)", n); //if(1==1){print(\"lol\")}
+    doCode("func(foo)(a){print(a)};foo(\"lol\")", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";
