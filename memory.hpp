@@ -1,6 +1,7 @@
 #include <cstddef>
 
 #include <iostream>
+#include <stdexcept>
 
 #ifdef DEBUG
 
@@ -32,7 +33,9 @@ LOG("Pointer constructor");
 
 _block=b;
 
-b->_refcount++;
+if (_block)
+
+_block->_refcount++;
 
 }
 
@@ -54,9 +57,13 @@ if (this==&o)
 
 return *this;
 
-if (_block && --_block->_refcount==0)
+if (_block && --_block->_refcount==0){
 
-delete _block;
+    delete _block;
+
+    _block = nullptr;
+
+}
 
 _block=o._block;
 
@@ -82,9 +89,13 @@ if (this==&o)
 
 return *this;
 
-if (_block && --_block->_refcount==0)
+if (_block && --_block->_refcount==0){
 
-delete _block;
+    delete _block;
+
+    _block = nullptr;
+
+}
 
 _block=o._block;
 
@@ -108,6 +119,10 @@ return nullptr;
 
 T* operator->(){
 
+if (!_block)
+
+throw std::runtime_error("Null pointer dereference");
+
 return _block->_data;
 
 }
@@ -116,11 +131,19 @@ return _block->_data;
 
 LOG("Pointer destructor");
 
-if (_block)
+if (_block){
 
-_block->_refcount--;
+    _block->_refcount--;
 
-if (_block && _block->_refcount==0) delete _block;
+    if (_block->_refcount==0){
+
+        delete _block;
+
+        _block = nullptr;
+
+    }
+
+}
 
 }
 
@@ -161,6 +184,10 @@ delete _data;
 template <typename T>
 
 Pointer<T> MakePtr(T* a){
+
+if (!a)
+
+return Pointer<T>();
 
 Pointer<T> p(new Block<T>(a));
 

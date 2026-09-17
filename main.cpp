@@ -106,6 +106,22 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
     LOG("Parsing expression: " + e + "\n");
     std::string expression=e;
     deleteAllSPaces(expression);
+    if (expression[0]=='{'){
+        //create dict
+        //syntax: {key1:value1,key2:value2,...}
+        if (expression.back()!='}') throw ValueError("Expected '}' at the end of dict expression");
+        std::string inner=expression.substr(1,expression.size()-2);
+        auto res=splitBy(inner,',');
+        Pointer<BasicObj> dict=MakePtr<BasicObj>(new InstanceObject(context));
+        for (auto &r:res){
+            auto keyValue=splitBy(r,':');
+            if (keyValue.size()!=2) throw ValueError("Expected key:value pair in dict expression");
+            std::string key=keyValue[0];
+            Pointer<BasicObj> value=parseExpression(keyValue[1],context);
+            dict->setattr(key,value);
+        }
+        return dict;
+    }
     if (expression.starts_with("if")){
             int i=0;
             LOG("IF DETECTED");
@@ -227,37 +243,118 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
     if (startsWithOnlyName(expression, remaining, beggining)){
         LOG("STARTS WITH NAME");
         std::string name = beggining;
-        Pointer<BasicObj> obj = context[name];
-        if (remaining[0] == '(') {
-            std::string inbrackets;
-            int bracketLevel=1;
-            for (int i=1;i<remaining.size();i++){
-                if (remaining[i]=='(') bracketLevel++;
-                if (remaining[i]==')') bracketLevel--;
-                if (bracketLevel==0){
-                    inbrackets=remaining.substr(1,i-1);
-                    remaining=remaining.substr(i+1);
-                    break;
-                }
-            }
-            std::vector<std::string> args = splitBy(inbrackets, ',');
-            std::vector<Pointer<BasicObj>> parsedArgs;
-            for (const auto& arg : args) {
-                parsedArgs.push_back(parseExpression(arg, context));
-            }
-            return obj->call(parsedArgs, context);
-        } else if (remaining[0] == '[') {
-            // Handle indexing
-            // Parse index and get the item
-        } else if (remaining[0] == '.') {
-            // Handle attribute access
-            // Get the attribute from the object
-        } else if (remaining[0] == '=') {
-            context[name] = parseExpression(remaining.substr(1), context);
-            return context[name];
+        Pointer<BasicObj> obj;
+        if (context.find(name) != context.end()) {
+            obj = context[name];
         } else {
-            throw ValueError("Unexpected character after variable name");
+            if (!remaining.starts_with('='))
+                throw ValueError(("Variable " + name + " not found in context").c_str());
+            else{
+                remaining=remaining.substr(1);
+                Pointer<BasicObj> value = parseExpression(remaining, context);
+                context[name] = value;
+                return value;
+            }
         }
+        char Parsing='u';
+        for (int i=0;i<remaining.size();i++){
+            if (remaining[i]=='.'){
+                std::string attrName;
+                i++;
+                while (i<remaining.size() && isalpha(remaining[i])){
+                    attrName+=remaining[i];
+                    i++;
+                }
+                i--;
+                obj=obj->getattr(attrName);
+                Parsing='.';
+            }
+            else if (remaining[i]=='['){
+                std::string indexExpr;
+                i++;
+                int bracketLevel=1;
+                while (bracketLevel>0 && i<remaining.size()){
+                    if (remaining[i]=='[') bracketLevel++;
+                    else if (remaining[i]==']') {
+                        bracketLevel--;
+                        if (bracketLevel==0) break;
+                    }
+                    else indexExpr+=remaining[i];
+                    i++;
+                    Parsing='[';
+                }
+                Pointer<BasicObj> indexObj = parseExpression(indexExpr, context);
+                obj=obj->getitem(indexObj);
+            }
+            else if (remaining[i]=='('){
+                std::string argsExpr;
+                i++;
+                int bracketLevel=1;
+                while (bracketLevel>0 && i<remaining.size()){
+                    if (remaining[i]=='(') bracketLevel++;
+                    else if (remaining[i]==')') {
+                        bracketLevel--;
+                        if (bracketLevel==0) break;
+                    }
+                    else argsExpr+=remaining[i];
+                    i++;
+                }
+                auto argStrings=splitBy(argsExpr,',');
+                std::vector<Pointer<BasicObj>> args;
+                for (auto &argStr:argStrings){
+                    args.push_back(parseExpression(argStr, context));
+                }
+                obj=obj->call(args, context);
+                Parsing='(';
+            }
+            else if (remaining[i]=='='){
+                if (Parsing=='.'){
+                    std::string attrName;
+                    int j=i-1;
+                    while (j>=0 && isalpha(remaining[j])){
+                        attrName=remaining[j]+attrName;
+                        j--;
+                    }
+                    std::string valueExpr;
+                    i++;
+                    while (i<remaining.size()){
+                        valueExpr+=remaining[i];
+                        i++;
+                    }
+                    Pointer<BasicObj> valueObj = parseExpression(valueExpr, context);
+                    obj->setattr(attrName, valueObj);
+                }
+                else if (Parsing=='['){
+                    std::string indexExpr;
+                    int j=i-1;
+                    while (j>=0 && remaining[j]!=']'){
+                        indexExpr=remaining[j]+indexExpr;
+                        j--;
+                    }
+                    Pointer<BasicObj> indexObj = parseExpression(indexExpr, context);
+                    std::string valueExpr;
+                    i++;
+                    while (i<remaining.size()){
+                        valueExpr+=remaining[i];
+                        i++;
+                    }
+                    Pointer<BasicObj> valueObj = parseExpression(valueExpr, context);
+                    obj->setitem(indexObj, valueObj);
+                }
+                std::string valueExpr;
+                i++;
+                while (i<remaining.size()){
+                    valueExpr+=remaining[i];
+                    i++;
+                }
+                Pointer<BasicObj> valueObj = parseExpression(valueExpr, context);
+                obj->setitem(valueObj, valueObj);
+            }
+            else{
+                throw ValueError(("Unexpected character in expression: " + std::string(1, remaining[i])).c_str());
+            }
+        }
+        return obj;
     }
     bool noOp=hasNoOp(expression);
     LOG(std::string("NO OP IS ")+std::to_string(noOp));
@@ -376,12 +473,19 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             sum=MakePtr<BasicObj>(new IntObj(sum->asInt() * parseExpression(curr, context)->asInt()));
             LOG("MULTIPLY");
         }
-        if (op=="-"){
+        if (op=="/"){
             LOG("DIVIDE");
             sum=MakePtr<BasicObj>(new IntObj(sum->asInt() / parseExpression(curr, context)->asInt()));
         }
     }
     return sum;
+}
+
+void doCode(const std::string& code, Namespace& context) {
+    auto res=splitBy(code,';');
+    for (auto &r:res){
+        parseExpression(r,context);
+    }
 }
 
 int main() {
@@ -418,11 +522,10 @@ int main() {
     std::cout << "D\n";
 
     std::cout << "D1\n";
-    auto result = parseExpression("for(i=0;i<10;i=i+1){print(i)}", n); //if(1==1){print(\"lol\")}
+    doCode("a={a:5};print(a.a)", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";
 
-    std::cout << result->str() << std::endl;
     return 0;
 }

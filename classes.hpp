@@ -292,3 +292,74 @@ class NativeFunctionObject:public BasicObj{
       return MakePtr<BasicObj>(new NativeFunctionObject(func));
     }
 };
+
+class InstanceObject:public BasicObj{
+  public:
+    Pointer<BasicObj> Prototype;
+    Namespace& context;
+
+    InstanceObject(Namespace& context,Pointer<BasicObj> c=nullptr):Prototype(c),context(context){};
+
+    Pointer<BasicObj> getattr(const std::string& s) override{
+      try{
+        return BasicObj::getattr(s);
+      }catch (const ValueError&){
+        if (!Prototype.get()) throw ValueError(("Attribute "+s+" not found and no prototype to check").c_str());
+        return Prototype->getattr(s);
+      }
+    }
+
+    Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace& context) override{
+      if (!Prototype.get()) throw ValueError("No prototype to call");
+      return Prototype->getattr("call")->call(args,context);
+    }
+
+    Pointer<BasicObj> add(Pointer<BasicObj> other,bool swapped) override{
+      if (!Prototype.get()) throw ValueError("No prototype to add");
+      return Prototype->getattr("add")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context);
+    }
+
+    Pointer<BasicObj> sub(Pointer<BasicObj> other,bool swapped) override{
+      if (!Prototype.get()) throw ValueError("No prototype to subtract");
+      return Prototype->getattr("sub")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context);
+    }
+
+    Pointer<BasicObj> mul(Pointer<BasicObj> other,bool swapped) override{
+      if (!Prototype.get()) throw ValueError("No prototype to multiply");
+      return Prototype->getattr("mul")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context);
+    }
+
+    Pointer<BasicObj> div(Pointer<BasicObj> other,bool swapped) override{
+      if (!Prototype.get()) throw ValueError("No prototype to divide");
+      return Prototype->getattr("div")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context);
+    }
+
+    bool greater(Pointer<BasicObj> other,bool swapped) override{
+      if (!Prototype.get()) throw ValueError("No prototype to compare");
+      return Prototype->getattr("greater")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context)->asbool();
+    }
+
+    bool less(Pointer<BasicObj> other,bool swapped) override{
+      if (!Prototype.get()) throw ValueError("No prototype to compare");
+      return Prototype->getattr("less")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context)->asbool();
+    }
+
+    bool equal(Pointer<BasicObj> other,bool swapped) override{
+      if (!Prototype.get()) throw ValueError("No prototype to compare");
+      return Prototype->getattr("equal")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context)->asbool();
+    }
+
+    Pointer<BasicObj> getitem(Pointer<BasicObj> index) override{
+      if (!Prototype.get()) throw ValueError("No prototype to get item");
+      return Prototype->getattr("getitem")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),index},context);
+    }
+
+    void setitem(Pointer<BasicObj> index, Pointer<BasicObj> value) override{
+      if (!Prototype.get()) throw ValueError("No prototype to set item");
+      Prototype->getattr("setitem")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),index,value},context);
+    }
+
+    Pointer<BasicObj> clone() override{
+      return MakePtr<BasicObj>(new InstanceObject(context, Prototype));
+    }
+};
