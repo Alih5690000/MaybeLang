@@ -14,7 +14,13 @@ bool isOnlyOneLayerOfBrackets(const std::string& e){
 }
 
 void deleteAllSPaces(std::string& s){
-    s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char c) { return std::isspace(c); }), s.end());
+    std::string newOne;
+    bool quoted=false;
+    for (auto &i:s){
+        if (i=='"') quoted=!quoted;
+        if (i!=' ' && !quoted) newOne+=i;
+    }
+    s=newOne;
 }
 
 bool hasNoOp(const std::string& e){
