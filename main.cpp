@@ -122,7 +122,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
         }
         return dict;
     }
-    if (expression.starts_with("if")){
+    if (expression.starts_with("if(")){
             int i=0;
             LOG("IF DETECTED");
             i++;
@@ -178,7 +178,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 return MakePtr<BasicObj>(new IntObj(0)); // or some other default value
             }
         }
-    if (expression.starts_with("for")){
+    if (expression.starts_with("for(")){
         int i=3;
         if (expression[i]!='(') throw ValueError("Expected '(' after 'for'");
         i++;
