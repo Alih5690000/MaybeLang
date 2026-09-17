@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <algorithm>
 #include "classes.hpp"
 
 bool isOnlyOneLayerOfBrackets(const std::string& e){
@@ -12,12 +13,18 @@ bool isOnlyOneLayerOfBrackets(const std::string& e){
     return true;
 }
 
+void deleteAllSPaces(std::string& s){
+    s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char c) { return std::isspace(c); }), s.end());
+}
+
 bool hasNoOp(const std::string& e){
     int bracketLevel=0;
     for (int i=0;i<e.size();i++){
         if (e[i]=='(') bracketLevel++;
         if (e[i]==')') bracketLevel--;
         if (bracketLevel==0 && (
+                e[i]=='+' ||
+                e[i]=='-' ||
                 e.substr(i,2)=="==" ||
                 e.substr(i,2)=="!=" ||
                 e.substr(i,2)==">=" ||
@@ -45,9 +52,7 @@ bool OnlyName(const std::string& e){
 
 bool startsWithOnlyName(const std::string& e, std::string& remaining, std::string& beggining){
     for (int i=0;i<e.size();i++){
-        if (e[i]=='(' || e[i]=='[' || e[i]=='.' || e[i]=='=' || 
-            e.substr(i, 2)=="==" || e.substr(i, 2)=="!=" || e.substr(i, 2)==">=" || 
-            e.substr(i, 2)=="<=" || e[i]=='>' || e[i]=='<'){
+        if (e[i]=='(' || e[i]=='[' || e[i]=='.' || e[i]=='='){
             remaining = e.substr(i);
             beggining = e.substr(0, i);
             return true;
@@ -97,8 +102,10 @@ std::vector<std::string> splitBy(std::string s, char delimiter) {
     return tokens;
 }
 
-Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& context) {
-    LOG("Parsing expression: " + expression + "\n");
+Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
+    LOG("Parsing expression: " + e + "\n");
+    std::string expression=e;
+    deleteAllSPaces(expression);
     if (expression.starts_with("if")){
             int i=0;
             LOG("IF DETECTED");
@@ -288,8 +295,9 @@ Pointer<BasicObj> parseExpression(const std::string& expression, Namespace& cont
         
         curr+=expression[i];
         if (((bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0 && (expression[i]=='+' || expression[i]=='-'
-        || expression.substr(i, 2)=="==" || expression.substr(i, 2)=="!=" || expression.substr(i, 2)==">="))
-         || (i==expression.size()-1)) && !noOp){
+        || expression.substr(i, 2)=="==" || expression.substr(i, 2)=="!=" || expression[i]=='>'
+        || expression[i]=='<')
+         || (i==expression.size()-1)) && !noOp)){
             LOG("OPERATOR DETECTED");
             if (expression[i]=='+' || expression[i]=='-' || expression.substr(i, 2)=="==" 
             || expression.substr(i, 2)=="!=" || expression.substr(i, 2)==">=")
@@ -410,7 +418,7 @@ int main() {
     std::cout << "D\n";
 
     std::cout << "D1\n";
-    auto result = parseExpression("a=input() print(a) if (a==\"lol\") { print(\"lol\") }", n); //if(1==1){print(\"lol\")}
+    auto result = parseExpression("for(i=0;i<10;i++){print(i)}", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";
