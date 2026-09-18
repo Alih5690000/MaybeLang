@@ -592,7 +592,7 @@ int main() {
     print(a.x);s
     print(a.y);
     )a";
-    doCode("a={a:func()(x,y){a=0;a.x=x;a.y=y}}", n); //if(1==1){print(\"lol\")}
+    doCode("a={a:func()(x,y){a=0;a.x=x;a.y=y}};print(a.a)", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";

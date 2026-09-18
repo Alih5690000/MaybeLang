@@ -301,12 +301,14 @@ class InstanceObject:public BasicObj{
     InstanceObject(Namespace& context,Pointer<BasicObj> c=nullptr):Prototype(c),context(context){};
 
     Pointer<BasicObj> getattr(const std::string& s) override{
-      try{
-        return BasicObj::getattr(s);
-      }catch (const ValueError&){
-        if (!Prototype.get()) throw ValueError(("Attribute "+s+" not found and no prototype to check").c_str());
-        return Prototype->getattr(s);
+      if (attrs.find(s)!=attrs.end()) return attrs[s];
+      std::string str;
+      for (auto [k,v]:attrs) {
+        str+=k;
+        str+=':';
+        str+=v->str();
       }
+      return MakePtr<BasicObj>(new StringObject(str));
     }
 
     Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace& context) override{
