@@ -25,10 +25,16 @@ void deleteAllSPaces(std::string& s){
 
 bool hasNoOp(const std::string& e){
     int bracketLevel=0;
+    int bracketLevel2=0;
+    int bracketLevel3=0;
     for (int i=0;i<e.size();i++){
         if (e[i]=='(') bracketLevel++;
         if (e[i]==')') bracketLevel--;
-        if (bracketLevel==0 && (
+        if (e[i]=='{') bracketLevel2++;
+        if (e[i]=='}') bracketLevel2--;
+        if (e[i]=='[') bracketLevel3++;
+        if (e[i]==']') bracketLevel3--;
+        if (bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0 && (
                 e[i]=='+' ||
                 e[i]=='-' ||
                 e.substr(i,2)=="==" ||
@@ -578,7 +584,12 @@ int main() {
 
     std::cout << "D1\n";
     auto code=R"a(
-    
+    proto={
+        init:func()(x,y){a=dummy();a.x=x;a.y=y;return(a);},
+    };
+    a=proto.init(5,10);
+    print(a.x);
+    print(a.y);
     )a";
     doCode("a=5;b=a;a=7;print(a);print(b);", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
