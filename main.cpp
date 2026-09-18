@@ -117,6 +117,7 @@ std::vector<std::string> splitBy(std::string s, char delimiter) {
 Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
     LOG("Parsing expression: " + e + "\n");
     std::string expression=e;
+    if (expression.empty()) return MakePtr<BasicObj>(new IntObj(0));
     deleteAllSPaces(expression);
     if (expression[0]=='{'){
         //create dict
@@ -588,10 +589,10 @@ int main() {
         init:func()(x,y){a=dummy();a.x=x;a.y=y;return(a);},
     };
     a=proto.init(5,10);
-    print(a.x);
+    print(a.x);s
     print(a.y);
     )a";
-    doCode("a=5;b=a;a=7;print(a);print(b);", n); //if(1==1){print(\"lol\")}
+    doCode("a={a:func()(x,y){a=0;a.x=x;a.y=y}}", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";
