@@ -18,7 +18,7 @@ void deleteAllSPaces(std::string& s){
     bool quoted=false;
     for (auto &i:s){
         if (i=='"') quoted=!quoted;
-        if (i!=' ' && !quoted) newOne+=i;
+        if (i!=' ' || quoted) newOne+=i;
     }
     s=newOne;
 }
@@ -295,13 +295,19 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
         Pointer<BasicObj> obj;
         if (context.find(name) != context.end()) {
             obj = context[name];
+            if (!remaining.empty() && remaining[0] == '=') {
+                remaining = remaining.substr(1);
+                Pointer<BasicObj> value = parseExpression(remaining, context);
+                context[name] = value->clone();
+                return value;
+            }
         } else {
             if (!remaining.starts_with('='))
                 throw ValueError(("Variable " + name + " not found in context").c_str());
             else{
                 remaining=remaining.substr(1);
                 Pointer<BasicObj> value = parseExpression(remaining, context);
-                context[name] = value;
+                context[name] = value->clone();
                 return value;
             }
         }
@@ -370,7 +376,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                         valueExpr+=remaining[i];
                         i++;
                     }
-                    Pointer<BasicObj> valueObj = parseExpression(valueExpr, context);
+                    Pointer<BasicObj> valueObj = parseExpression(valueExpr, context)->clone();
                     obj->setattr(attrName, valueObj);
                 }
                 else if (Parsing=='['){
@@ -571,7 +577,10 @@ int main() {
     std::cout << "D\n";
 
     std::cout << "D1\n";
-    doCode("func(foo)(a){print(a)};foo(\"lol\")", n); //if(1==1){print(\"lol\")}
+    auto code=R"a(
+    
+    )a";
+    doCode("a=5;b=a;a=7;print(a);print(b);", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";
