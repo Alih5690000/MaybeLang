@@ -561,7 +561,7 @@ int main() {
         })
     );
     n["input"] = MakePtr<BasicObj>(
-        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args) -> Pointer<BasicObj> {
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args){
             std::string input;
             std::getline(std::cin, input);
             return MakePtr<BasicObj>(new StringObject(input));
