@@ -313,84 +313,43 @@ class InstanceObject:public BasicObj{
     }
 
     Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace& context) override{
-      if (!Prototype.get()) {
-        if (attrs.find("__call__")==attrs.end()) throw ValueError("No prototype and no __call__ attribute to call");
-        return attrs["__call__"]->call(args,context);
-      }
-      return Prototype->getattr("__call__")->call(args,context);
+      return operatorFunction("__call__", "call")->call(args,context);
     }
 
     Pointer<BasicObj> add(Pointer<BasicObj> other,bool swapped) override{
-      if (!Prototype.get()) {
-        if (attrs.find("__add__")==attrs.end()) throw ValueError("No prototype and no __add__ attribute to add");
-        return attrs["__add__"]->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context);
-      }
-      return Prototype->getattr("__add__")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context);
+      return operatorFunction("__add__", "add")->call({receiver(),other},context);
     }
 
     Pointer<BasicObj> sub(Pointer<BasicObj> other,bool swapped) override{
-      if (!Prototype.get()) {
-        if (attrs.find("__sub__")==attrs.end()) throw ValueError("No prototype and no __sub__ attribute to subtract");
-        return attrs["__sub__"]->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context);
-      }
-      return Prototype->getattr("__sub__")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context);
+      return operatorFunction("__sub__", "subtract")->call({receiver(),other},context);
     }
 
     Pointer<BasicObj> mul(Pointer<BasicObj> other,bool swapped) override{
-      if (!Prototype.get()) {
-        if (attrs.find("__mul__")==attrs.end()) throw ValueError("No prototype and no __mul__ attribute to multiply");
-        return attrs["__mul__"]->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context);
-      }
-      return Prototype->getattr("__mul__")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context);
+      return operatorFunction("__mul__", "multiply")->call({receiver(),other},context);
     }
 
     Pointer<BasicObj> div(Pointer<BasicObj> other,bool swapped) override{
-      if (!Prototype.get()) {
-        if (attrs.find("__div__")==attrs.end()) throw ValueError("No prototype and no __div__ attribute to divide");
-        return attrs["__div__"]->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context);
-      }
-      return Prototype->getattr("__div__")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context);
+      return operatorFunction("__div__", "divide")->call({receiver(),other},context);
     }
 
     bool greater(Pointer<BasicObj> other,bool swapped) override{
-      if (!Prototype.get()) {
-        if (attrs.find("__greater__")==attrs.end()) throw ValueError("No prototype and no __greater__ attribute to compare");
-        return attrs["__greater__"]->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context)->asbool();
-      }
-      return Prototype->getattr("__greater__")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context)->asbool();
+      return operatorFunction("__greater__", "compare")->call({receiver(),other},context)->asbool();
     }
 
     bool less(Pointer<BasicObj> other,bool swapped) override{
-      if (!Prototype.get()) {
-        if (attrs.find("__less__")==attrs.end()) throw ValueError("No prototype and no __less__ attribute to compare");
-        return attrs["__less__"]->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context)->asbool();
-      }
-      return Prototype->getattr("__less__")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context)->asbool();
+      return operatorFunction("__less__", "compare")->call({receiver(),other},context)->asbool();
     }
 
     bool equal(Pointer<BasicObj> other,bool swapped) override{
-      if (!Prototype.get()) {
-        if (attrs.find("__equal__")==attrs.end()) throw ValueError("No prototype and no __equal__ attribute to compare");
-        return attrs["__equal__"]->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context)->asbool();
-      }
-      return Prototype->getattr("__equal__")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),other},context)->asbool();
+      return operatorFunction("__equal__", "compare")->call({receiver(),other},context)->asbool();
     }
 
     Pointer<BasicObj> getitem(Pointer<BasicObj> index) override{
-      if (!Prototype.get()) {
-        if (attrs.find("__getitem__")==attrs.end()) throw ValueError("No prototype and no __getitem__ attribute to get item");
-        return attrs["__getitem__"]->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),index},context);
-      }
-      return Prototype->getattr("__getitem__")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),index},context);
+      return operatorFunction("__getitem__", "get item")->call({receiver(),index},context);
     }
 
     void setitem(Pointer<BasicObj> index, Pointer<BasicObj> value) override{
-      if (!Prototype.get()) {
-        if (attrs.find("__setitem__")==attrs.end()) throw ValueError("No prototype and no __setitem__ attribute to set item");
-        attrs["__setitem__"]->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),index,value},context);
-      } else {
-        Prototype->getattr("__setitem__")->call({MakePtr<BasicObj>(new InstanceObject(context, Prototype)),index,value},context);
-      }
+      operatorFunction("__setitem__", "set item")->call({receiver(),index,value},context);
     }
 
     Pointer<BasicObj> clone() override{
@@ -398,6 +357,23 @@ class InstanceObject:public BasicObj{
       for (auto [k,v]:attrs){
         obj->setattr(k,v);
       }
+      return obj;
+    }
+
+  private:
+    Pointer<BasicObj> operatorFunction(const std::string& name,const std::string& operation){
+      auto it=attrs.find(name);
+      if (it!=attrs.end()) return it->second;
+      if (Prototype.get()) {
+        auto prototypeIt=Prototype->attrs.find(name);
+        if (prototypeIt!=Prototype->attrs.end()) return prototypeIt->second;
+      }
+      throw ValueError(("No instance or prototype attribute "+name+" to "+operation).c_str());
+    }
+
+    Pointer<BasicObj> receiver(){
+      auto obj=MakePtr<BasicObj>(new InstanceObject(context, Prototype));
+      obj->attrs=attrs;
       return obj;
     }
 };
