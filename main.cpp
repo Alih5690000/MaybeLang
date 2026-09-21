@@ -18,23 +18,17 @@ void deleteAllSPaces(std::string& s){
     bool quoted=false;
     for (auto &i:s){
         if (i=='"') quoted=!quoted;
-        if (i!=' ' || quoted) newOne+=i;
+        if ((i!=' ' && i!='\t' && i!='\n') || quoted) newOne+=i;
     }
     s=newOne;
 }
 
 bool hasNoOp(const std::string& e){
     int bracketLevel=0;
-    int bracketLevel2=0;
-    int bracketLevel3=0;
     for (int i=0;i<e.size();i++){
         if (e[i]=='(') bracketLevel++;
         if (e[i]==')') bracketLevel--;
-        if (e[i]=='{') bracketLevel2++;
-        if (e[i]=='}') bracketLevel2--;
-        if (e[i]=='[') bracketLevel3++;
-        if (e[i]==']') bracketLevel3--;
-        if (bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0 && (
+        if (bracketLevel==0 && (
                 e[i]=='+' ||
                 e[i]=='-' ||
                 e.substr(i,2)=="==" ||
@@ -99,7 +93,8 @@ std::vector<std::string> splitBy(std::string s, char delimiter) {
         if (c == '}') bracketLevel2--;
         if (c == '[') bracketLevel3++;
         if (c == ']') bracketLevel3--;
-        if (c == delimiter) {
+        if (c == delimiter && bracketLevel==0
+            && bracketLevel2==0 && bracketLevel3==0) {
             if (!token.empty() && bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0) {
                 tokens.push_back(token);
                 token.clear();
@@ -115,10 +110,12 @@ std::vector<std::string> splitBy(std::string s, char delimiter) {
 }
 
 Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
+
     LOG("Parsing expression: " + e + "\n");
     std::string expression=e;
     if (expression.empty()) return MakePtr<BasicObj>(new IntObj(0));
     deleteAllSPaces(expression);
+
     if (expression[0]=='{'){
         //create dict
         //syntax: {key1:value1,key2:value2,...}
@@ -152,11 +149,12 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 bracketLevel--;
                 if (bracketLevel==0) break;
             }
-            else insideBrackets+=expression[i];
+            insideBrackets+=expression[i];
             i++;
         }
         auto res=splitBy(insideBrackets,',');
         std::vector<std::string> params;
+
         for (auto &r:res){
             params.push_back(r);
         }
@@ -171,7 +169,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 bracketLevel2--;
                 if (bracketLevel2==0) break;
             }
-            else body+=expression[i];
+            body+=expression[i];
             i++;
         }
         Pointer<BasicObj> funcObj=MakePtr<BasicObj>(new FunctionObject(params,body));
@@ -206,7 +204,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             while (bracketLevel2>0 && i<expression.size()){
                 if (expression[i]=='{') bracketLevel2++;
                 else if (expression[i]=='}') bracketLevel2--;
-                else thenExpr+=expression[i];
+                thenExpr+=expression[i];
                 i++;
             }
             LOG("Then expression is "+thenExpr);
@@ -220,7 +218,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 while (bracketLevel2>0 && i<expression.size()){
                     if (expression[i]=='{') bracketLevel2++;
                     else if (expression[i]=='}') bracketLevel2--;
-                    else elseExpr+=expression[i];
+                    elseExpr+=expression[i];
                     i++;
                 }
                 if (bracketLevel2!=0) throw ValueError("Mismatched braces in 'else' expression");
@@ -269,7 +267,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 bracketLevel--;
                 if (bracketLevel==0) break;
             }
-            else bodyExpr+=expression[i];
+            bodyExpr+=expression[i];
             i++;
         }
         if (bracketLevel!=0) throw ValueError("Mismatched braces in 'for' loop body");
@@ -341,7 +339,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                         bracketLevel--;
                         if (bracketLevel==0) break;
                     }
-                    else indexExpr+=remaining[i];
+                    indexExpr+=remaining[i];
                     i++;
                     Parsing='[';
                 }
@@ -358,7 +356,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                         bracketLevel--;
                         if (bracketLevel==0) break;
                     }
-                    else argsExpr+=remaining[i];
+                    argsExpr+=remaining[i];
                     i++;
                 }
                 auto argStrings=splitBy(argsExpr,',');
@@ -584,15 +582,7 @@ int main() {
     std::cout << "D\n";
 
     std::cout << "D1\n";
-    auto code=R"a(
-    proto={
-        init:func()(x,y){a=dummy();a.x=x;a.y=y;return(a);},
-    };
-    a=proto.init(5,10);
-    print(a.x);s
-    print(a.y);
-    )a";
-    doCode("a={a:func()(x,y){a=0;a.x=x;a.y=y}};print(a.a)", n); //if(1==1){print(\"lol\")}
+    doCode("a={a:func()(x,y){print(x+y)}};a.a(3,5)", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";

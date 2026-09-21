@@ -267,6 +267,7 @@ class FunctionObject:public BasicObj{
     FunctionObject(const std::vector<std::string>& p, const std::string& b):params(p),body(b){};
 
     Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace& context) override{
+      
       if (args.size()!=params.size()) throw ValueError("Incorrect number of arguments");
       Namespace localContext=context;
       for (size_t i=0;i<params.size();i++){
@@ -393,6 +394,10 @@ class InstanceObject:public BasicObj{
     }
 
     Pointer<BasicObj> clone() override{
-      return MakePtr<BasicObj>(new InstanceObject(context, Prototype));
+      auto obj=MakePtr<BasicObj>(new InstanceObject(context, Prototype));
+      for (auto [k,v]:attrs){
+        obj->setattr(k,v);
+      }
+      return obj;
     }
 };
