@@ -110,7 +110,6 @@ std::vector<std::string> splitBy(std::string s, char delimiter) {
 }
 
 Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
-
     LOG("Parsing expression: " + e + "\n");
     std::string expression=e;
     if (expression.empty()) return MakePtr<BasicObj>(new IntObj(0));
@@ -131,6 +130,17 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             dict->setattr(key,value);
         }
         return dict;
+    }
+    if (expression[0]=='['){
+        if (expression.back()!=']') THROW(ValueError,"Must end with ]");
+        std::string content=expression.substr(1,expression.size()-2);
+        auto a=splitBy(content,',');
+        auto obj=MakePtr<BasicObj>(new ArrayObject);
+        for (auto i:a){
+            ((ArrayObject*)obj.get())->
+                arr.push_back(parseExpression(i,context));
+        }
+        return obj;
     }
     if (expression.starts_with("func(")){
         std::string name;
@@ -625,7 +635,7 @@ int main() {
     std::cout << "D\n";
 
     std::cout << "D1\n";
-    doCode("a={a:func()(x,y){print(x+y)}};a.b(3,5)", n); //if(1==1){print(\"lol\")}
+    doCode("a=[1,2,3,4,5]", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";

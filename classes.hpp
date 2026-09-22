@@ -1,6 +1,8 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <utility>
+#include <functional>
 #include "memory.hpp"
 
 
@@ -283,8 +285,8 @@ class FunctionObject:public BasicObj{
 
 class NativeFunctionObject:public BasicObj{
   public:
-    Pointer<BasicObj> (*func)(std::vector<Pointer<BasicObj>>);
-    NativeFunctionObject(Pointer<BasicObj> (*f)(std::vector<Pointer<BasicObj>>)):func(f){};
+    std::function<Pointer<BasicObj>(std::vector<Pointer<BasicObj>>)> func;
+    NativeFunctionObject(std::function<Pointer<BasicObj>(std::vector<Pointer<BasicObj>>)> f):func(f){};
 
     Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace&) override{
       return func(args);
@@ -371,4 +373,42 @@ class InstanceObject:public BasicObj{
       obj->attrs=attrs;
       return obj;
     }
+};
+
+class ArrayObject:public BasicObj{
+  public:
+  std::vector<Pointer<BasicObj>> arr;
+
+  ArrayObject(std::vector<Pointer<BasicObj>> a):
+    arr(a){}
+  ArrayObject(){
+    auto p=[this](std::vector<Pointer<BasicObj>> a){
+      arr.push_back(a[0]);
+      return MakePtr<BasicObj>(new IntObj(0));
+    };
+    attrs["push_back"]=MakePtr<BasicObj>(new NativeFunctionObject(p));
+    auto pp=[this](std::vector<Pointer<BasicObj>> a){
+      arr.pop_back();
+      return MakePtr<BasicObj>(new IntObj(0));
+    };
+    attrs["pop_back"]=MakePtr<BasicObj>(new NativeFunctionObject(pp));
+  };
+
+  void setitem(Pointer<BasicObj> s, Pointer<BasicObj> p) override{
+    for (int i=0;i<arr.size();i++){
+      if (i==s->asInt()) arr[i]=p;
+    }
+    THROW(ValueError,"Key "+s->str()+" is absent in array");
+  }
+  Pointer<BasicObj> getitem(Pointer<BasicObj> s) override{
+    for (int i=0;i<arr.size();i++){
+      return arr[i];
+    }
+    THROW(ValueError,"Key "+s->str()+" is absent in array");
+  }
+  Pointer<BasicObj> clone() override{
+    Pointer<BasicObj> o=MakePtr<BasicObj>(new ArrayObject(arr));
+    o->attrs=attrs;
+    return o;
+  }
 };
