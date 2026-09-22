@@ -2,6 +2,14 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <string>
+
+static thread_local int currentSourceLine = 1;
+static thread_local std::string currentSourceLineContent;
+
+#define THROW(exceptionType, message) \
+    throw exceptionType((std::string(message) + " at line " + std::to_string(currentSourceLine) \
+        + ": " + currentSourceLineContent).c_str())
 
 #ifdef DEBUG
 
@@ -121,7 +129,7 @@ T* operator->(){
 
 if (!_block)
 
-throw std::runtime_error("Null pointer dereference");
+THROW(std::runtime_error, "Null pointer dereference");
 
 return _block->_data;
 

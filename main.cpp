@@ -119,13 +119,13 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
     if (expression[0]=='{'){
         //create dict
         //syntax: {key1:value1,key2:value2,...}
-        if (expression.back()!='}') throw ValueError("Expected '}' at the end of dict expression");
+        if (expression.back()!='}') THROW(ValueError, "Expected '}' at the end of dict expression");
         std::string inner=expression.substr(1,expression.size()-2);
         auto res=splitBy(inner,',');
         Pointer<BasicObj> dict=MakePtr<BasicObj>(new InstanceObject(context));
         for (auto &r:res){
             auto keyValue=splitBy(r,':');
-            if (keyValue.size()!=2) throw ValueError("Expected key:value pair in dict expression");
+            if (keyValue.size()!=2) THROW(ValueError, "Expected key:value pair in dict expression");
             std::string key=keyValue[0];
             Pointer<BasicObj> value=parseExpression(keyValue[1],context);
             dict->setattr(key,value);
@@ -139,7 +139,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             name+=expression[i];
             i++;
         }
-        if (i>=expression.size() || expression[i]!=')') throw ValueError("Expected ')' after function name");
+        if (i>=expression.size() || expression[i]!=')') THROW(ValueError, "Expected ')' after function name");
         std::string insideBrackets;
         i+=2;
         int bracketLevel=1;
@@ -159,7 +159,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             params.push_back(r);
         }
         i++;
-        if (i>=expression.size() || expression[i]!='{') throw ValueError("Expected '{' after function parameters");
+        if (i>=expression.size() || expression[i]!='{') THROW(ValueError, "Expected '{' after function parameters");
         std::string body;
         i++;
         int bracketLevel2=1;
@@ -182,7 +182,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             i++;
             std::string condition;
             i++;
-            if (expression[i]!='(') throw ValueError("Expected '(' after 'if'");
+            if (expression[i]!='(') THROW(ValueError, "Expected '(' after 'if'");
             i++;
             int bracketLevel=1;
             while (bracketLevel>0 && i<expression.size()){
@@ -195,10 +195,10 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 i++;
             }
             LOG("Condition is "+condition);
-            if (bracketLevel!=0) throw ValueError("Mismatched parentheses in 'if' condition");
+            if (bracketLevel!=0) THROW(ValueError, "Mismatched parentheses in 'if' condition");
             std::string thenExpr;
             i++;
-            if (expression[i]!='{') throw ValueError("Expected '{' after 'if' condition");
+            if (expression[i]!='{') THROW(ValueError, "Expected '{' after 'if' condition");
             i++;
             int bracketLevel2=1;
             while (bracketLevel2>0 && i<expression.size()){
@@ -208,11 +208,11 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 i++;
             }
             LOG("Then expression is "+thenExpr);
-            if (bracketLevel2!=0) throw ValueError("Mismatched braces in 'if' expression");
+            if (bracketLevel2!=0) THROW(ValueError, "Mismatched braces in 'if' expression");
             std::string elseExpr;
             if (expression.substr(i, 4)=="else"){
                 i+=4;
-                if (expression[i]!='{') throw ValueError("Expected '{' after 'else'");
+                if (expression[i]!='{') THROW(ValueError, "Expected '{' after 'else'");
                 i++;
                 int bracketLevel2=1;
                 while (bracketLevel2>0 && i<expression.size()){
@@ -221,7 +221,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                     elseExpr+=expression[i];
                     i++;
                 }
-                if (bracketLevel2!=0) throw ValueError("Mismatched braces in 'else' expression");
+                if (bracketLevel2!=0) THROW(ValueError, "Mismatched braces in 'else' expression");
             }
             Pointer<BasicObj> condResult = parseExpression(condition, context);
             if (condResult->asbool()) {
@@ -234,30 +234,30 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
         }
     if (expression.starts_with("for(")){
         int i=3;
-        if (expression[i]!='(') throw ValueError("Expected '(' after 'for'");
+        if (expression[i]!='(') THROW(ValueError, "Expected '(' after 'for'");
         i++;
         std::string initExpr;
         while (i<expression.size() && expression[i]!=';'){
             initExpr+=expression[i];
             i++;
         }
-        if (i>=expression.size() || expression[i]!=';') throw ValueError("Expected ';' after 'for' initialization");
+        if (i>=expression.size() || expression[i]!=';') THROW(ValueError, "Expected ';' after 'for' initialization");
         i++;
         std::string conditionExpr;
         while (i<expression.size() && expression[i]!=';'){
             conditionExpr+=expression[i];
             i++;
         }
-        if (i>=expression.size() || expression[i]!=';') throw ValueError("Expected ';' after 'for' condition");
+        if (i>=expression.size() || expression[i]!=';') THROW(ValueError, "Expected ';' after 'for' condition");
         i++;
         std::string stepExpr;
         while (i<expression.size() && expression[i]!=')'){
             stepExpr+=expression[i];
             i++;
         }
-        if (i>=expression.size() || expression[i]!=')') throw ValueError("Expected ')' after 'for' step");
+        if (i>=expression.size() || expression[i]!=')') THROW(ValueError, "Expected ')' after 'for' step");
         i++;
-        if (expression[i]!='{') throw ValueError("Expected '{' after 'for' loop header");
+        if (expression[i]!='{') THROW(ValueError, "Expected '{' after 'for' loop header");
         i++;
         std::string bodyExpr;
         int bracketLevel=1;
@@ -270,7 +270,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             bodyExpr+=expression[i];
             i++;
         }
-        if (bracketLevel!=0) throw ValueError("Mismatched braces in 'for' loop body");
+        if (bracketLevel!=0) THROW(ValueError, "Mismatched braces in 'for' loop body");
         auto initResult = parseExpression(initExpr, context);
         auto condResult = parseExpression(conditionExpr, context);
         auto stepResult = parseExpression(stepExpr, context);
@@ -308,7 +308,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             }
         } else {
             if (!remaining.starts_with('='))
-                throw ValueError(("Variable " + name + " not found in context").c_str());
+                THROW(ValueError, ("Variable " + name + " not found in context").c_str());
             else{
                 remaining=remaining.substr(1);
                 Pointer<BasicObj> value = parseExpression(remaining, context);
@@ -411,7 +411,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 obj->setitem(valueObj, valueObj);
             }
             else{
-                throw ValueError(("Unexpected character in expression: " + std::string(1, remaining[i])).c_str());
+                THROW(ValueError, ("Unexpected character in expression: " + std::string(1, remaining[i])).c_str());
             }
         }
         return obj;
@@ -542,13 +542,56 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
 }
 
 void doCode(const std::string& code, Namespace& context) {
-    auto res=splitBy(code,';');
-    for (auto &r:res){
-        parseExpression(r,context);
+    size_t statementStart=0;
+    int currentLine=1;
+    int statementLine=1;
+    int bracketLevel=0;
+    int bracketLevel2=0;
+    int bracketLevel3=0;
+    bool statementHasContent=false;
+    size_t statementLineStart=0;
+
+    auto setSourceLocation = [&](size_t lineStart, int line) {
+        size_t lineEnd=code.find('\n', lineStart);
+        if (lineEnd==std::string::npos) lineEnd=code.size();
+        currentSourceLine=line;
+        currentSourceLineContent=code.substr(lineStart,lineEnd-lineStart);
+    };
+
+    for (size_t i=0;i<code.size();i++) {
+        char character=code[i];
+        if (character=='\n') currentLine++;
+        if (!statementHasContent && character!=' ' && character!='\t'
+            && character!='\r' && character!='\n') {
+            statementLine=currentLine;
+            statementLineStart=i;
+            while (statementLineStart>0 && code[statementLineStart-1]!='\n')
+                statementLineStart--;
+            statementHasContent=true;
+        }
+        if (character=='(') bracketLevel++;
+        if (character==')') bracketLevel--;
+        if (character=='{') bracketLevel2++;
+        if (character=='}') bracketLevel2--;
+        if (character=='[') bracketLevel3++;
+        if (character==']') bracketLevel3--;
+
+        if (character==';' && bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0) {
+            setSourceLocation(statementLineStart,statementLine);
+            parseExpression(code.substr(statementStart,i-statementStart),context);
+            statementStart=i+1;
+            statementHasContent=false;
+        }
+    }
+
+    if (statementStart<code.size()) {
+        setSourceLocation(statementLineStart,statementLine);
+        parseExpression(code.substr(statementStart),context);
     }
 }
 
 int main() {
+    try {
     std::cout << "A\n";
 
     Namespace n;
@@ -582,10 +625,14 @@ int main() {
     std::cout << "D\n";
 
     std::cout << "D1\n";
-    doCode("a={a:func()(x,y){print(x+y)}};a.a(3,5)", n); //if(1==1){print(\"lol\")}
+    doCode("a={a:func()(x,y){print(x+y)}};a.b(3,5)", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";
-
+ 
     return 0;
+    } catch (const std::exception& error) {
+        std::cerr << "Error: " << error.what() << std::endl;
+        return 1;
+    }
 }
