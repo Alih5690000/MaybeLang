@@ -3,8 +3,8 @@
 #include <vector>
 #include <utility>
 #include <functional>
+#define DEBUG
 #include "memory.hpp"
-
 
 class NotAvailable:public std::exception{
   public:
@@ -30,6 +30,17 @@ class ValueError:public std::exception{
 
 class BasicObj;
 typedef std::map<std::string,Pointer<BasicObj>> Namespace;
+
+void doCode(const std::string& code, Namespace& context);
+
+class ReturnSig:public std::exception{
+  public:
+  Pointer<BasicObj> sig;
+  ReturnSig(Pointer<BasicObj> s):sig(s){}
+  const char* what() const noexcept override{
+    return "Uncaught return statement";
+  }
+};
 
 class BasicObj{
     public:
@@ -266,7 +277,11 @@ class FunctionObject:public BasicObj{
   public:
     std::vector<std::string> params;
     std::string body;
-    FunctionObject(const std::vector<std::string>& p, const std::string& b):params(p),body(b){};
+    FunctionObject(const std::vector<std::string>& p, const std::string& b):params(p),body(b){
+      for (auto i:params){
+        LOG("Param "+i);
+      }
+    };
 
     Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace& context) override{
       
@@ -274,8 +289,15 @@ class FunctionObject:public BasicObj{
       Namespace localContext=context;
       for (size_t i=0;i<params.size();i++){
         localContext[params[i]]=args[i];
+        LOG("Setting "+params[i]+" to "+args[i]->str());
       }
-      return parseExpression(body,localContext);
+      try{
+        doCode(body, localContext);
+      }
+      catch(ReturnSig& s){
+        return s.sig;
+      }
+      return MakePtr<BasicObj>(new IntObj(0));
     }
 
     Pointer<BasicObj> clone() override{
@@ -285,11 +307,11 @@ class FunctionObject:public BasicObj{
 
 class NativeFunctionObject:public BasicObj{
   public:
-    std::function<Pointer<BasicObj>(std::vector<Pointer<BasicObj>>)> func;
-    NativeFunctionObject(std::function<Pointer<BasicObj>(std::vector<Pointer<BasicObj>>)> f):func(f){};
+    std::function<Pointer<BasicObj>(std::vector<Pointer<BasicObj>>,Namespace&)> func;
+    NativeFunctionObject(std::function<Pointer<BasicObj>(std::vector<Pointer<BasicObj>>, Namespace&)> f):func(f){};
 
-    Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace&) override{
-      return func(args);
+    Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace& n) override{
+      return func(args,n);
     }
     Pointer<BasicObj> clone() override{
       return MakePtr<BasicObj>(new NativeFunctionObject(func));
@@ -382,12 +404,12 @@ class ArrayObject:public BasicObj{
   ArrayObject(std::vector<Pointer<BasicObj>> a):
     arr(a){}
   ArrayObject(){
-    auto p=[this](std::vector<Pointer<BasicObj>> a){
+    auto p=[this](std::vector<Pointer<BasicObj>> a, Namespace&){
       arr.push_back(a[0]);
       return MakePtr<BasicObj>(new IntObj(0));
     };
     attrs["push_back"]=MakePtr<BasicObj>(new NativeFunctionObject(p));
-    auto pp=[this](std::vector<Pointer<BasicObj>> a){
+    auto pp=[this](std::vector<Pointer<BasicObj>> a, Namespace&){
       arr.pop_back();
       return MakePtr<BasicObj>(new IntObj(0));
     };

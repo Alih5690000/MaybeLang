@@ -142,6 +142,12 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
         }
         return obj;
     }
+    if (expression.starts_with("return(")){
+        LOG("Met return");
+        std::string a=expression.substr(7);
+        a.pop_back();
+        throw ReturnSig(parseExpression(a,context));
+    }
     if (expression.starts_with("func(")){
         std::string name;
         int i=5;
@@ -331,12 +337,13 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             if (remaining[i]=='.'){
                 std::string attrName;
                 i++;
-                while (i<remaining.size() && isalpha(remaining[i])){
+                while (i<remaining.size() && (isalpha(remaining[i]) || remaining[i]=='_')){
                     attrName+=remaining[i];
                     i++;
                 }
                 i--;
-                obj=obj->getattr(attrName);
+                if (i+1<remaining.size() && remaining[i+1]!='=')
+                    obj=obj->getattr(attrName);
                 Parsing='.';
             }
             else if (remaining[i]=='['){
@@ -381,7 +388,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 if (Parsing=='.'){
                     std::string attrName;
                     int j=i-1;
-                    while (j>=0 && isalpha(remaining[j])){
+                    while (j>=0 && (isalpha(remaining[j]) || remaining[j]=='_')){
                         attrName=remaining[j]+attrName;
                         j--;
                     }
@@ -393,6 +400,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                     }
                     Pointer<BasicObj> valueObj = parseExpression(valueExpr, context)->clone();
                     obj->setattr(attrName, valueObj);
+                    return obj;
                 }
                 else if (Parsing=='['){
                     std::string indexExpr;
@@ -410,6 +418,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                     }
                     Pointer<BasicObj> valueObj = parseExpression(valueExpr, context);
                     obj->setitem(indexObj, valueObj);
+                    return obj;
                 }
                 std::string valueExpr;
                 i++;
@@ -600,20 +609,10 @@ void doCode(const std::string& code, Namespace& context) {
     }
 }
 
-int main() {
-    try {
-    std::cout << "A\n";
-
+Namespace CreateContext(){
     Namespace n;
-
-    std::cout << "B\n";
-
-    n["lol"] = MakePtr<BasicObj>(new IntObj(5));
-
-    std::cout << "C\n";
-
     n["print"] = MakePtr<BasicObj>(
-        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args) -> Pointer<BasicObj> {
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace&) -> Pointer<BasicObj> {
             std::cout << "INSIDE PRINT\n";
 
             for (auto& arg : args)
@@ -625,17 +624,42 @@ int main() {
         })
     );
     n["input"] = MakePtr<BasicObj>(
-        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args){
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace&){
             std::string input;
             std::getline(std::cin, input);
             return MakePtr<BasicObj>(new StringObject(input));
         })
     );
+    n["newObject"] = MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace& context){
+            return MakePtr<BasicObj>(new InstanceObject(context, (args.size()==2 ? args[1]:nullptr)));
+        })
+    );
+    return n;
+}
 
-    std::cout << "D\n";
+int main() {
+    try {
+    std::cout << "A\n";
+
+    Namespace n=CreateContext();
+
+    std::cout << "B\n";
+
+    n["lol"] = MakePtr<BasicObj>(new IntObj(5));
+
+    std::cout << "C\n";
 
     std::cout << "D1\n";
-    doCode("a=[1,2,3,4,5]", n); //if(1==1){print(\"lol\")}
+    doCode(R"ahh(kindOfClass={
+        init:func()(x,y){
+            n=newObject();
+            n.x=x;
+            n.y=y;
+            return(n);
+        }
+    };
+    b=kindOfClass.init(5,6))ahh", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";
