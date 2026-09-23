@@ -342,7 +342,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                     i++;
                 }
                 i--;
-                if (i+1<remaining.size() && remaining[i+1]!='=')
+                if (i+1>=remaining.size() || remaining[i+1]!='=')
                     obj=obj->getattr(attrName);
                 Parsing='.';
             }
@@ -615,6 +615,10 @@ Namespace CreateContext(){
         new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace&) -> Pointer<BasicObj> {
             std::cout << "INSIDE PRINT\n";
 
+            std::cout << "TYPE IS "<<(
+                dynamic_cast<IntObj*>(args[0].get()) ? 
+                "IntObj" : "idk other ");
+
             for (auto& arg : args)
                 std::cout << arg->str() << " ";
 
@@ -659,7 +663,8 @@ int main() {
             return(n);
         }
     };
-    b=kindOfClass.init(5,6))ahh", n); //if(1==1){print(\"lol\")}
+    b=kindOfClass.init(5,6);
+    print(b.x))ahh", n); //if(1==1){print(\"lol\")}
     std::cout << "D2\n";
 
     std::cout << "E\n";

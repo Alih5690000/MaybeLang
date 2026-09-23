@@ -3,7 +3,7 @@
 #include <vector>
 #include <utility>
 #include <functional>
-#define DEBUG
+//#define DEBUG
 #include "memory.hpp"
 
 class NotAvailable:public std::exception{

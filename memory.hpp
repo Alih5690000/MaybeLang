@@ -37,8 +37,6 @@ Pointer(){}
 
 Pointer(Block<T>* b){
 
-LOG("Pointer constructor");
-
 _block=b;
 
 if (_block)
@@ -48,8 +46,6 @@ _block->_refcount++;
 }
 
 Pointer(const Pointer<T>& o){
-
-LOG("Pointer copy constructor");
 
 _block=o._block;
 
@@ -137,8 +133,6 @@ return _block->_data;
 
 ~Pointer(){
 
-LOG("Pointer destructor");
-
 if (_block){
 
     _block->_refcount--;
@@ -169,7 +163,7 @@ size_t _refcount=0;
 
 Block(T* _ptr):_data(_ptr){
 
-LOG("Block constructor");
+
 
 }
 
@@ -181,7 +175,7 @@ return _data;
 
 ~Block(){
 
-LOG("Block destructor");
+
 
 delete _data;
 
