@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <algorithm>
 #include "classes.hpp"
@@ -112,9 +113,8 @@ std::vector<std::string> splitBy(std::string s, char delimiter) {
 Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
     LOG("Parsing expression: " + e + "\n");
     std::string expression=e;
-    if (expression.empty()) return MakePtr<BasicObj>(new IntObj(0));
     deleteAllSPaces(expression);
-
+    if (expression.empty()) return MakePtr<BasicObj>(new IntObj(0));
     if (expression[0]=='{'){
         //create dict
         //syntax: {key1:value1,key2:value2,...}
@@ -429,6 +429,9 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 Pointer<BasicObj> valueObj = parseExpression(valueExpr, context);
                 obj->setitem(valueObj, valueObj);
             }
+            else if (remaining[i]=='\0'){
+
+            }
             else{
                 THROW(ValueError, ("Unexpected character in expression: " + std::string(1, remaining[i])).c_str());
             }
@@ -613,11 +616,11 @@ Namespace CreateContext(){
     Namespace n;
     n["print"] = MakePtr<BasicObj>(
         new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace&) -> Pointer<BasicObj> {
-            std::cout << "INSIDE PRINT\n";
+            LOG("INSIDE PRINT");
 
-            std::cout << "TYPE IS "<<(
+            LOG("TYPE IS "+std::string(
                 dynamic_cast<IntObj*>(args[0].get()) ? 
-                "IntObj" : "idk other ");
+                "IntObj" : "idk other "));
 
             for (auto& arg : args)
                 std::cout << arg->str() << " ";
@@ -642,33 +645,18 @@ Namespace CreateContext(){
     return n;
 }
 
-int main() {
+int main(int argc, char** argv) {
     try {
-    std::cout << "A\n";
-
     Namespace n=CreateContext();
-
-    std::cout << "B\n";
-
-    n["lol"] = MakePtr<BasicObj>(new IntObj(5));
-
-    std::cout << "C\n";
-
-    std::cout << "D1\n";
-    doCode(R"ahh(kindOfClass={
-        init:func()(x,y){
-            n=newObject();
-            n.x=x;
-            n.y=y;
-            return(n);
-        }
-    };
-    b=kindOfClass.init(5,6);
-    print(b.x))ahh", n); //if(1==1){print(\"lol\")}
-    std::cout << "D2\n";
-
-    std::cout << "E\n";
- 
+    std::ifstream file(argv[1]);
+    std::string str;
+    size_t size;
+    file.seekg(0, std::ios::end);
+    size=file.tellg();
+    str.resize(size);
+    file.seekg(0,std::ios::beg);
+    file.read(str.data(), size);
+    doCode(str,n);
     return 0;
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << std::endl;

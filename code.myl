@@ -1,0 +1,10 @@
+kindOfClass={
+    init:func()(x,y){
+        n=newObject();
+        n.x=x;
+        n.y=y;
+        return(n);
+    }
+};
+b=kindOfClass.init(5,6);
+print(b.x)

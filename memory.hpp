@@ -17,7 +17,7 @@ static thread_local std::string currentSourceLineContent;
 
 #else
 
-#define LOG
+#define LOG(x)
 
 #endif
 
