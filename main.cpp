@@ -20,7 +20,7 @@ void deleteAllSPaces(std::string& s){
     bool quoted=false;
     for (auto &i:s){
         if (i=='"') quoted=!quoted;
-        if ((i!=' ' && i!='\t' && i!='\n') || quoted) newOne+=i;
+        if ((i!=' ' && i!='\t' && i!='\n' && i!='\0') || quoted) newOne+=i;
     }
     s=newOne;
 }

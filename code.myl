@@ -1,2 +1,2 @@
 import("library");
-print(library.lol)
+print(library.lol);

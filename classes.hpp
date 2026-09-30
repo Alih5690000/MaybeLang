@@ -3,7 +3,7 @@
 #include <vector>
 #include <utility>
 #include <functional>
-//#define DEBUG
+#define DEBUG
 #include "memory.hpp"
 #ifdef __WIN32
 #include <windows.h>
