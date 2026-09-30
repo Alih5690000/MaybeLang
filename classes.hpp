@@ -61,7 +61,6 @@ class BasicObj{
     virtual bool asbool(){THROW(NotAvailable, "That is Base class (asbool)");};
     virtual void free(){THROW(NotAvailable, "That is Base class (free)");};
     virtual int asInt(){THROW(NotAvailable, "That is Base class (asInt)");};
-    virtual bool asBool(){THROW(NotAvailable, "That is Base class (asBool)");};
     virtual Pointer<BasicObj> getattr(const std::string& s){
       auto it = attrs.find(s);
       if (it==attrs.end()) THROW(ValueError, ("Attribute "+s+" not found").c_str());
@@ -239,10 +238,6 @@ class BoolObject:public BasicObj{
 
     int asInt() override{
       return value ? 1 : 0;
-    }
-
-    bool asBool() override{
-      return value;
     }
 
     bool asbool() override{

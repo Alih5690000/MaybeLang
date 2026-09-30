@@ -1,2 +1,1 @@
-import("library");
-print(library.lol);
+print(1 && 0);

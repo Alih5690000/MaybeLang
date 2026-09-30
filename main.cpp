@@ -35,8 +35,8 @@ bool hasNoOp(const std::string& e){
                 e[i]=='-' ||
                 e.substr(i,2)=="==" ||
                 e.substr(i,2)=="!=" ||
-                e.substr(i,2)==">=" ||
-                e.substr(i,2)=="<=" ||
+                e.substr(i,2)=="&&" ||
+                e.substr(i,2)=="||" ||
                 e[i]=='>' ||
                 e[i]=='<'))
             return false;
@@ -476,7 +476,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
         curr+=expression[i];
         if (((bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0 && (expression[i]=='+' || expression[i]=='-'
         || expression.substr(i, 2)=="==" || expression.substr(i, 2)=="!=" || expression[i]=='>'
-        || expression[i]=='<')
+        || expression[i]=='<' || expression.substr(i, 2)=="&&" || expression.substr(i, 2)=="||")
          || (i==expression.size()-1)) && !noOp)){
             LOG("OPERATOR DETECTED");
             curr.pop_back();
@@ -504,7 +504,14 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             if (op=="<"){
                 sum=MakePtr<BasicObj>(new BoolObject(sum->less(parseExpression(curr, context), false)));
             }
-            if (expression.substr(i, 2)=="==" || expression.substr(i, 2)=="!="){
+            if (op=="&&"){
+                sum=MakePtr<BasicObj>(new BoolObject(sum->asbool() && parseExpression(curr, context)->asbool()));
+            }
+            if (op=="||"){
+                sum=MakePtr<BasicObj>(new BoolObject(sum->asbool() || parseExpression(curr, context)->asbool()));
+            }
+            if (expression.substr(i, 2)=="==" || expression.substr(i, 2)=="!="
+                || expression.substr(i, 2)=="&&" || expression.substr(i, 2)=="||"){
                 op=expression.substr(i, 2);
                 i++;
             }
