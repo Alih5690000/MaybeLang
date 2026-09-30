@@ -479,9 +479,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
         || expression[i]=='<')
          || (i==expression.size()-1)) && !noOp)){
             LOG("OPERATOR DETECTED");
-            if (expression[i]=='+' || expression[i]=='-' || expression.substr(i, 2)=="==" 
-            || expression.substr(i, 2)=="!=" || expression[i]=='>' || expression[i]=='<')
-                curr.pop_back();
+            curr.pop_back();
             if (op=="u"){
                 sum=parseExpression(curr, context);
                 LOG("FIRST NUM");
