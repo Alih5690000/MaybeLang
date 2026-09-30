@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <algorithm>
+#include <windows.h>
 #include "classes.hpp"
 
 bool isOnlyOneLayerOfBrackets(const std::string& e){
@@ -640,6 +641,30 @@ Namespace CreateContext(){
     n["newObject"] = MakePtr<BasicObj>(
         new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace& context){
             return MakePtr<BasicObj>(new InstanceObject(context, (args.size()==2 ? args[1]:nullptr)));
+        })
+    );
+    n["import"] = MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace& context){
+            HINSTANCE m=LoadLibraryA((args[0]->str()+".dll").c_str());
+            if (!m){
+                throw ValueError(
+                    ("Couldnt locate .dll file named "+args[0]->str())
+                    .c_str()
+                );
+            }
+            Namespace* (*func)() = 
+                (Namespace* (*)())GetProcAddress(m, "Load");
+            if (!func){
+                throw ValueError(
+                    ("Couldnt find Load method in file "+args[0]->str())
+                    .c_str()
+                );
+            }
+            Pointer<BasicObj> o=MakePtr<BasicObj>(
+                new InstanceObject(context, nullptr));
+            o->attrs=*func();
+            context[args[0]->str()]=o;
+            return MakePtr<BasicObj>(new IntObj(0));
         })
     );
     return n;

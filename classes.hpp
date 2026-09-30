@@ -5,6 +5,12 @@
 #include <functional>
 //#define DEBUG
 #include "memory.hpp"
+#ifdef __WIN32
+#include <windows.h>
+#define IMPORT extern "C" __declspec(dllexport)
+#else
+#define IMPORT
+#endif
 
 class NotAvailable:public std::exception{
   public:
