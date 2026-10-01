@@ -137,6 +137,7 @@ class IntObj:public BasicObj{
     }
 
     bool less(Pointer<BasicObj> other,bool) override{
+      LOG("INT::LESS OTHER IS "+other->str());
       return value<asInt(other);
     }
 
@@ -414,7 +415,11 @@ class ArrayObject:public BasicObj{
       arr.pop_back();
       return MakePtr<BasicObj>(new IntObj(0));
     };
+    auto ppp=[this](std::vector<Pointer<BasicObj>> args, Namespace& context){
+      return MakePtr<BasicObj>(new IntObj(arr.size()));
+    };
     attrs["pop_back"]=MakePtr<BasicObj>(new NativeFunctionObject(pp));
+    attrs["size"]=MakePtr<BasicObj>(new NativeFunctionObject(ppp));
   };
 
   void setitem(Pointer<BasicObj> s, Pointer<BasicObj> p) override{

@@ -116,6 +116,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
     std::string expression=e;
     deleteAllSPaces(expression);
     if (expression.empty()) return MakePtr<BasicObj>(new IntObj(0));
+    if (expression.back()==';') expression.pop_back();
     if (expression[0]=='{'){
         //create dict
         //syntax: {key1:value1,key2:value2,...}
@@ -288,11 +289,14 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             i++;
         }
         if (bracketLevel!=0) THROW(ValueError, "Mismatched braces in 'for' loop body");
+        LOG("For is "+initExpr+' '+conditionExpr+' '+stepExpr+' '+bodyExpr);
         auto initResult = parseExpression(initExpr, context);
         auto condResult = parseExpression(conditionExpr, context);
         auto stepResult = parseExpression(stepExpr, context);
+        LOG("For is "+initResult->str()+' '+condResult->str()+
+        ' '+stepResult->str());
         while (condResult->asbool()) {
-            parseExpression(bodyExpr, context);
+            doCode(bodyExpr, context);
             stepResult = parseExpression(stepExpr, context);
             condResult = parseExpression(conditionExpr, context);
         }
@@ -478,8 +482,11 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
         || expression.substr(i, 2)=="==" || expression.substr(i, 2)=="!=" || expression[i]=='>'
         || expression[i]=='<' || expression.substr(i, 2)=="&&" || expression.substr(i, 2)=="||")
          || (i==expression.size()-1)) && !noOp)){
-            LOG("OPERATOR DETECTED");
-            curr.pop_back();
+            LOG("OPERATOR DETECTED CURR IS "+curr);
+            if ((expression[i]=='+' || expression[i]=='-'
+                || expression.substr(i, 2)=="==" || expression.substr(i, 2)=="!=" || expression[i]=='>'
+                || expression[i]=='<' || expression.substr(i, 2)=="&&" || expression.substr(i, 2)=="||"))
+                    curr.pop_back();
             if (op=="u"){
                 sum=parseExpression(curr, context);
                 LOG("FIRST NUM");
@@ -502,7 +509,10 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 sum=MakePtr<BasicObj>(new BoolObject(sum->greater(parseExpression(curr, context), false)));
             }
             if (op=="<"){
+                LOG("LESS DETECTED SUM IS "+sum->str());
+                LOG("LESS COMPARING "+sum->str()+" WITH "+curr);
                 sum=MakePtr<BasicObj>(new BoolObject(sum->less(parseExpression(curr, context), false)));
+                LOG("AFTER LESS SUM IS "+sum->str());
             }
             if (op=="&&"){
                 sum=MakePtr<BasicObj>(new BoolObject(sum->asbool() && parseExpression(curr, context)->asbool()));

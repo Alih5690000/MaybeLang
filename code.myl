@@ -1,1 +1,5 @@
-print(1 && 0);
+summ=0;
+for (i=0;i<67;i=i+1){
+    summ=summ+i;
+};
+print(summ);
