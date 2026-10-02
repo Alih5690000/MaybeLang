@@ -48,6 +48,13 @@ class ReturnSig:public std::exception{
   }
 };
 
+class BreakSig:public std::exception{
+  public:
+  const char* what() const noexcept override{
+    return "Uncaught break statement";
+  }
+};
+
 class BasicObj{
     public:
     virtual Pointer<BasicObj> add(Pointer<BasicObj>,bool){THROW(NotAvailable, "That is Base class (add)");};
@@ -402,8 +409,6 @@ class ArrayObject:public BasicObj{
   public:
   std::vector<Pointer<BasicObj>> arr;
 
-  ArrayObject(std::vector<Pointer<BasicObj>> a):
-    arr(a){}
   ArrayObject(){
     auto p=[this](std::vector<Pointer<BasicObj>> a, Namespace&){
       arr.push_back(a[0]);
@@ -415,27 +420,46 @@ class ArrayObject:public BasicObj{
       return MakePtr<BasicObj>(new IntObj(0));
     };
     auto ppp=[this](std::vector<Pointer<BasicObj>> args, Namespace& context){
+      LOG("[ArrayObject] arr size is "+std::to_string(arr.size()));
       return MakePtr<BasicObj>(new IntObj(arr.size()));
     };
     attrs["pop_back"]=MakePtr<BasicObj>(new NativeFunctionObject(pp));
     attrs["size"]=MakePtr<BasicObj>(new NativeFunctionObject(ppp));
   };
+  ArrayObject(std::vector<Pointer<BasicObj>> a)
+    {
+      auto p=[this](std::vector<Pointer<BasicObj>> a, Namespace&){
+      arr.push_back(a[0]);
+      return MakePtr<BasicObj>(new IntObj(0));
+    };
+    attrs["push_back"]=MakePtr<BasicObj>(new NativeFunctionObject(p));
+    auto pp=[this](std::vector<Pointer<BasicObj>> a, Namespace&){
+      arr.pop_back();
+      return MakePtr<BasicObj>(new IntObj(0));
+    };
+    auto ppp=[this](std::vector<Pointer<BasicObj>> args, Namespace& context){
+      LOG("[ArrayObject] arr size is "+std::to_string(arr.size()));
+      return MakePtr<BasicObj>(new IntObj(arr.size()));
+    };
+    attrs["pop_back"]=MakePtr<BasicObj>(new NativeFunctionObject(pp));
+    attrs["size"]=MakePtr<BasicObj>(new NativeFunctionObject(ppp));
+      arr = std::move(a);
+    }
 
   void setitem(Pointer<BasicObj> s, Pointer<BasicObj> p) override{
-    for (int i=0;i<arr.size();i++){
-      if (i==s->asInt()) arr[i]=p;
-    }
-    THROW(ValueError,"Key "+s->str()+" is absent in array");
+    if (s->asInt()>=arr.size())
+      THROW(ValueError,"Key "+s->str()+
+        " is absent in array, size is "+std::to_string(arr.size()));
+    arr[s->asInt()]=p->clone();
   }
   Pointer<BasicObj> getitem(Pointer<BasicObj> s) override{
-    for (int i=0;i<arr.size();i++){
-      return arr[i];
-    }
-    THROW(ValueError,"Key "+s->str()+" is absent in array");
+    if (s->asInt()>=arr.size())
+      THROW(ValueError,"Key "+s->str()+" is absent in array");
+    return arr[s->asInt()];
   }
   Pointer<BasicObj> clone() override{
     Pointer<BasicObj> o=MakePtr<BasicObj>(new ArrayObject(arr));
-    o->attrs=attrs;
+    
     return o;
   }
 };

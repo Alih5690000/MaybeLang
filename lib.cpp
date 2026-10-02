@@ -1,5 +1,5 @@
 #include "classes.hpp"
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 class SimpleWindow{
     public:
@@ -55,6 +55,24 @@ IMPORT Namespace* Load(){
     (*na)["Window"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
         if (args.size()!=3) THROW(ValueError, "Invalid args count");
         return MakePtr<BasicObj>(new WindowObject(args[0]->str(), args[1]->asInt(), args[2]->asInt()));
+    }));
+    (*na)["GetEvents"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
+            Pointer<BasicObj> arr=MakePtr<BasicObj>(new ArrayObject);
+            int i=0;
+            SDL_Event e;
+            while (SDL_PollEvent(&e)){
+                if (e.type==SDL_QUIT){
+                    Pointer<BasicObj> o=
+                        MakePtr<BasicObj>(new InstanceObject(n));
+                    o->setattr("type", MakePtr<BasicObj>(
+                        new StringObject("QUIT")
+                    ));
+                    ((ArrayObject*)arr.get())->arr.push_back(o);
+                }
+            }
+            LOG("[ArrayObject] size is "+std::to_string(
+                ((ArrayObject*)arr.get())->arr.size()));
+            return arr;
     }));
     return na;
 }

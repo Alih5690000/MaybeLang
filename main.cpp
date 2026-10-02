@@ -117,6 +117,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
     deleteAllSPaces(expression);
     if (expression.empty()) return MakePtr<BasicObj>(new IntObj(0));
     if (expression.back()==';') expression.pop_back();
+    if (expression=="break") throw BreakSig();
     if (expression[0]=='{'){
         //create dict
         //syntax: {key1:value1,key2:value2,...}
@@ -292,11 +293,15 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
         LOG("For is "+initExpr+' '+conditionExpr+' '+stepExpr+' '+bodyExpr);
         auto initResult = parseExpression(initExpr, context);
         auto condResult = parseExpression(conditionExpr, context);
-        auto stepResult = parseExpression(stepExpr, context);
-        LOG("For is "+initResult->str()+' '+condResult->str()+
-        ' '+stepResult->str());
+        Pointer<BasicObj> stepResult;
+        LOG("For is "+initResult->str()+' '+condResult->str());
         while (condResult->asbool()) {
+            try{
             doCode(bodyExpr, context);
+            }
+            catch (const BreakSig& b){
+                break;
+            }
             stepResult = parseExpression(stepExpr, context);
             condResult = parseExpression(conditionExpr, context);
         }
