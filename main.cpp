@@ -447,7 +447,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
     LOG(std::string("NO OP IS ")+std::to_string(noOp));
     std::string curr;
     std::string op="u";
-    Pointer<BasicObj> sum=MakePtr<BasicObj>(new BasicObj);
+    Pointer<BasicObj> sum=MakePtr<BasicObj>(new InstanceObject(context));
     int bracketLevel=0;
     int bracketLevel2=0;
     int bracketLevel3=0;
@@ -662,23 +662,24 @@ Namespace CreateContext(){
         new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace& context){
             HINSTANCE m=LoadLibraryA((args[0]->str()+".dll").c_str());
             if (!m){
-                throw ValueError(
-                    ("Couldnt locate .dll file named "+args[0]->str())
-                    .c_str()
-                );
+                THROW(ValueError, "Couldnt locate .dll file named "+args[0]->str());
             }
             Namespace* (*func)() = 
                 (Namespace* (*)())GetProcAddress(m, "Load");
             if (!func){
-                throw ValueError(
-                    ("Couldnt find Load method in file "+args[0]->str())
-                    .c_str()
-                );
+                THROW(ValueError, "Couldnt find Load method in file "+args[0]->str());
             }
             Pointer<BasicObj> o=MakePtr<BasicObj>(
                 new InstanceObject(context, nullptr));
             o->attrs=*func();
             context[args[0]->str()]=o;
+            return MakePtr<BasicObj>(new IntObj(0));
+        })
+    );
+    n["wait"]=MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace& context){
+            if (args.size()!=1) THROW(ValueError, "Invalid arguments count");
+            Sleep(args[0]->asInt());
             return MakePtr<BasicObj>(new IntObj(0));
         })
     );

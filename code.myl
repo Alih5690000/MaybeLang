@@ -1,5 +1,5 @@
-summ=0;
-for (i=0;i<67;i=i+1){
-    summ=summ+i;
-};
-print(summ);
+import("library");
+w=library.Window("lol", 1000, 800);
+w.fill(255,255,0);
+w.present();
+wait(5000);

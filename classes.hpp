@@ -59,7 +59,6 @@ class BasicObj{
     virtual bool less(Pointer<BasicObj>,bool){THROW(NotAvailable, "That is Base class (less)");};
     virtual bool equal(Pointer<BasicObj>,bool){THROW(NotAvailable, "That is Base class (equal)");};
     virtual bool asbool(){THROW(NotAvailable, "That is Base class (asbool)");};
-    virtual void free(){THROW(NotAvailable, "That is Base class (free)");};
     virtual int asInt(){THROW(NotAvailable, "That is Base class (asInt)");};
     virtual Pointer<BasicObj> getattr(const std::string& s){
       auto it = attrs.find(s);
@@ -74,7 +73,7 @@ class BasicObj{
     virtual Pointer<BasicObj> setitem(std::vector<Pointer<BasicObj>>){THROW(NotAvailable, "That is Base class (setitem)");};
     virtual Pointer<BasicObj> call(std::vector<Pointer<BasicObj>>,Namespace&){THROW(NotAvailable, "That is Base class (call)");};
     virtual void setitem(Pointer<BasicObj>, Pointer<BasicObj>){THROW(NotAvailable, "That is Base class (setitem)");};
-    virtual Pointer<BasicObj> clone(){THROW(NotAvailable, "That is Base class (clone)");};
+    virtual Pointer<BasicObj> clone()=0;
     virtual ~BasicObj()=default;
     std::map<std::string,Pointer<BasicObj>> attrs;
 };
