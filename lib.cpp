@@ -46,6 +46,24 @@ class WindowObject:public BasicObj{
     }
     Pointer<BasicObj> clone(){
         WindowObject* o=new WindowObject(*this);
+        o->attrs["present"]=MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            SDL_RenderPresent(window->renderer);
+            return MakePtr<BasicObj>(new IntObj(0));
+        }));
+        o->attrs["fill"]=MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            if (args.size()!=3 && args.size()!=4) THROW(ValueError, "Invalid arguments count");
+            int red=args[0]->asInt();
+            int green=args[1]->asInt();
+            int blue=args[2]->asInt();
+            int alpha=255;;
+            if (args.size()==4){
+                alpha=args[3]->asInt();
+            }
+            SDL_SetRenderDrawColor(window->renderer, red, green, blue, alpha);
+            SDL_Rect rect={0,0,this->w,this->h};
+            SDL_RenderFillRect(window->renderer, &rect);
+            return MakePtr<BasicObj>(new IntObj(0));
+        }));
         return MakePtr<BasicObj>(o);
     }
 };
