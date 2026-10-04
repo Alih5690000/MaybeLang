@@ -16,6 +16,23 @@ class SimpleWindow{
     }
 };
 
+class RectObject:public BasicObj{
+    public:
+    RectObject(SDL_Rect re){
+        setattr("x",MakePtr<BasicObj>(new IntObj(re.x)));
+        setattr("y",MakePtr<BasicObj>(new IntObj(re.y)));
+        setattr("w",MakePtr<BasicObj>(new IntObj(re.w)));
+        setattr("h",MakePtr<BasicObj>(new IntObj(re.h)));
+    }
+    Pointer<BasicObj> clone(){
+        auto p=MakePtr<BasicObj>(new RectObject(*this));
+        for (auto [k,v]:attrs){
+            p->setattr(k,v);
+        }
+        return p;
+    }
+};
+
 class WindowObject:public BasicObj{
     Pointer<SimpleWindow> window;
     std::string title;
@@ -38,6 +55,26 @@ class WindowObject:public BasicObj{
             SDL_SetRenderDrawColor(window->renderer, red, green, blue, alpha);
             SDL_Rect rect={0,0,this->w,this->h};
             SDL_RenderFillRect(window->renderer, &rect);
+            return MakePtr<BasicObj>(new IntObj(0));
+        }));
+        attrs["drawRect"]=MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            int red=args[1]->getitem(MakePtr<BasicObj>(new IntObj(0)))
+                ->asInt();
+            int green=args[1]->getitem(MakePtr<BasicObj>(new IntObj(1)))
+                ->asInt();
+            int blue=args[1]->getitem(MakePtr<BasicObj>(new IntObj(2)))
+                ->asInt();
+            int alpha=args[1]->getitem(MakePtr<BasicObj>(new IntObj(3)))
+                ->asInt();
+            SDL_Rect r={
+                args[0]->getattr("x")->asInt(),
+                args[0]->getattr("y")->asInt(),
+                args[0]->getattr("w")->asInt(),
+                args[0]->getattr("h")->asInt()
+            };
+            SDL_SetRenderDrawColor(window->renderer, 
+                red, green, blue, alpha);
+            SDL_RenderFillRect(window->renderer, &r);
             return MakePtr<BasicObj>(new IntObj(0));
         }));
     }
@@ -77,6 +114,22 @@ IMPORT Namespace* Load(){
             LOG("[ArrayObject] size is "+std::to_string(
                 ((ArrayObject*)arr.get())->arr.size()));
             return arr;
+    }));
+    (*na)["Rect"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
+        if (args.empty())
+            return MakePtr<BasicObj>(new RectObject({}));
+        SDL_Rect r={args[0]->asInt(),args[1]->asInt(),
+            args[2]->asInt(),args[3]->asInt()};
+        return MakePtr<BasicObj>(new RectObject(r));
+    }));
+    (*na)["isPressed"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
+        const Uint8* k=SDL_GetKeyboardState(NULL);
+        SDL_Scancode sc=SDL_GetScancodeFromName(args[0]->str()
+            .c_str());
+        if (sc==SDL_SCANCODE_UNKNOWN){
+            return MakePtr<BasicObj>(new BoolObject(false));
+        }
+        return MakePtr<BasicObj>(new BoolObject(k[sc]));
     }));
     return na;
 }
