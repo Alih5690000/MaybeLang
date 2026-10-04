@@ -2,13 +2,13 @@ import("library");
 w=library.Window("lol", 950, 700);
 w.fill(255,255,0);
 w.present();
-for (;1;){
+running=1;
+for (;running;){
     events=library.GetEvents();
-    print("SIZE IS ");
-    print(events.size());
     for (i=0;i<events.size();i=i+1){
         if (events[i].type=="QUIT"){ 
             print("QUIT GET");
+            running=0;
             break;
         };
     };

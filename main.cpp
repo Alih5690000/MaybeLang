@@ -222,7 +222,10 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             int bracketLevel2=1;
             while (bracketLevel2>0 && i<expression.size()){
                 if (expression[i]=='{') bracketLevel2++;
-                else if (expression[i]=='}') bracketLevel2--;
+                else if (expression[i]=='}'){ 
+                    bracketLevel2--;
+                    if (bracketLevel2==0) break;
+                }
                 thenExpr+=expression[i];
                 i++;
             }
@@ -244,12 +247,11 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             }
             Pointer<BasicObj> condResult = parseExpression(condition, context);
             if (condResult->asbool()) {
-                return parseExpression(thenExpr, context);
+                doCode(thenExpr, context);
             } else if (!elseExpr.empty()) {
-                return parseExpression(elseExpr, context);
-            } else {
-                return MakePtr<BasicObj>(new IntObj(0)); // or some other default value
-            }
+                doCode(elseExpr, context);
+            } 
+            return MakePtr<BasicObj>(new IntObj(0)); // or some other default value
         }
     if (expression.starts_with("for(")){
         int i=3;
@@ -320,7 +322,8 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
     }
     std::string remaining;
     std::string beggining;
-    if (startsWithOnlyName(expression, remaining, beggining)){
+    if (startsWithOnlyName(expression, remaining, beggining)
+        && hasNoOp(expression)){
         LOG("STARTS WITH NAME");
         std::string name = beggining;
         Pointer<BasicObj> obj;
@@ -401,6 +404,11 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                     while (j>=0 && (isalpha(remaining[j]) || remaining[j]=='_')){
                         attrName=remaining[j]+attrName;
                         j--;
+                    }
+                    if (i+1<remaining.size() && remaining[i+1]=='='){
+                        Pointer<BasicObj> left = obj->getattr(attrName);
+                        Pointer<BasicObj> right = parseExpression(remaining.substr(i+2), context);
+                        return MakePtr<BasicObj>(new BoolObject(left->equal(right, false)));
                     }
                     std::string valueExpr;
                     i++;
@@ -488,9 +496,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
         || expression[i]=='<' || expression.substr(i, 2)=="&&" || expression.substr(i, 2)=="||")
          || (i==expression.size()-1)) && !noOp)){
             LOG("OPERATOR DETECTED CURR IS "+curr);
-            if ((expression[i]=='+' || expression[i]=='-'
-                || expression.substr(i, 2)=="==" || expression.substr(i, 2)=="!=" || expression[i]=='>'
-                || expression[i]=='<' || expression.substr(i, 2)=="&&" || expression.substr(i, 2)=="||"))
+            if (i!=expression.size()-1)
                     curr.pop_back();
             if (op=="u"){
                 sum=parseExpression(curr, context);

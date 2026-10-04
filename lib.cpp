@@ -41,7 +41,6 @@ class WindowObject:public BasicObj{
             return MakePtr<BasicObj>(new IntObj(0));
         }));
     }
-    }
     WindowObject(std::string title, int w, int h){
         window=MakePtr(new SimpleWindow(title, w, h));
         this->w=w;
