@@ -13,9 +13,14 @@ for (;running;){
             break;
         };
     };
+    if (lib.isPressed("D")){
+        print("D pressed");
+        rr.x=rr.x+100;
+    };
     if (lib.isPressed("Q")){ 
+        print("Q is pressed");
         running=0;
-    }
+    };
     w.fill(255,255,0);
     w.drawRect(rr, [255,0,0,255]);
     w.present();

@@ -44,6 +44,30 @@ bool hasNoOp(const std::string& e){
     return true;
 }
 
+bool hasAssignment(const std::string& e){
+    int bracketLevel=0;
+    int bracketLevel2=0;
+    int bracketLevel3=0;
+    bool quoted=false;
+    for (int i=0;i<e.size();i++){
+        if (e[i]=='"' && (i==0 || e[i-1]!='\\'))
+            quoted=!quoted;
+        if (quoted) continue;
+        if (e[i]=='(') bracketLevel++;
+        if (e[i]==')') bracketLevel--;
+        if (e[i]=='{') bracketLevel2++;
+        if (e[i]=='}') bracketLevel2--;
+        if (e[i]=='[') bracketLevel3++;
+        if (e[i]==']') bracketLevel3--;
+        if (bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0
+            && e[i]=='='
+            && (i==0 || e[i-1]!='=')
+            && (i+1>=e.size() || e[i+1]!='='))
+            return true;
+    }
+    return false;
+}
+
 bool OnlyNum(const std::string& e){
     for (int i=0;i<e.size();i++){
         if (!isdigit(e[i])) return false;
@@ -323,7 +347,7 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
     std::string remaining;
     std::string beggining;
     if (startsWithOnlyName(expression, remaining, beggining)
-        && hasNoOp(expression)){
+        && (hasNoOp(expression) || hasAssignment(expression))){
         LOG("STARTS WITH NAME");
         std::string name = beggining;
         Pointer<BasicObj> obj;
