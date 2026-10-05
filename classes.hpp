@@ -67,6 +67,7 @@ class BasicObj{
     virtual bool equal(Pointer<BasicObj>,bool){THROW(NotAvailable, "That is Base class (equal)");};
     virtual bool asbool(){THROW(NotAvailable, "That is Base class (asbool)");};
     virtual int asInt(){THROW(NotAvailable, "That is Base class (asInt)");};
+    virtual float asFloat(){THROW(NotAvailable, "That is Base class (asFloat)");};
     virtual Pointer<BasicObj> getattr(const std::string& s){
       auto it = attrs.find(s);
       if (it==attrs.end()) THROW(ValueError, ("Attribute "+s+" not found").c_str());
@@ -134,6 +135,10 @@ class IntObj:public BasicObj{
       return value;
     }
 
+    float asFloat() override{
+      return value;
+    }
+
     std::string str() override{
       return std::to_string(value);
     }
@@ -164,6 +169,93 @@ class IntObj:public BasicObj{
       IntObj* integer=dynamic_cast<IntObj*>(other.get());
       if (integer==nullptr) THROW(ValueError, "Expected an integer");
       return integer->value;
+    }
+};
+
+class FloatObj:public BasicObj{
+    public:
+    float value;
+    FloatObj(float v):value(v){};
+
+    Pointer<BasicObj> add(Pointer<BasicObj> other,bool swapped) override{
+      if (dynamic_cast<IntObj*>(other.get()) || dynamic_cast<FloatObj*>(other.get())){
+        return MakePtr<BasicObj>(new FloatObj(asFloat(other)+value));
+      }
+      if (!swapped)
+        return other->add(MakePtr<BasicObj>(new FloatObj(value)),true);
+      THROW(ValueError, "Cannot add non-numeric object to float");
+    }
+
+    Pointer<BasicObj> sub(Pointer<BasicObj> other,bool swapped) override{
+      if (dynamic_cast<IntObj*>(other.get()) || dynamic_cast<FloatObj*>(other.get())){
+        float result=swapped ? asFloat(other)-value : value-asFloat(other);
+        return MakePtr<BasicObj>(new FloatObj(result));
+      }
+      if (!swapped)
+        return other->sub(MakePtr<BasicObj>(new FloatObj(value)),true);
+      THROW(ValueError, "Cannot subtract non-numeric object from float");
+    }
+
+    Pointer<BasicObj> mul(Pointer<BasicObj> other,bool swapped) override{
+      if (dynamic_cast<IntObj*>(other.get()) || dynamic_cast<FloatObj*>(other.get())){
+        return MakePtr<BasicObj>(new FloatObj(asFloat(other)*value));
+      }
+      if (!swapped)
+        return other->mul(MakePtr<BasicObj>(new FloatObj(value)),true);
+      THROW(ValueError, "Cannot multiply non-numeric object by float");
+    }
+
+    Pointer<BasicObj> div(Pointer<BasicObj> other,bool swapped) override{
+      if (dynamic_cast<IntObj*>(other.get()) || dynamic_cast<FloatObj*>(other.get())){
+        float dividend=swapped ? asFloat(other) : value;
+        float divisor=swapped ? value : asFloat(other);
+        if (divisor==0.0f) THROW(ValueError, "Division by zero");
+        return MakePtr<BasicObj>(new FloatObj(dividend/divisor));
+      }
+      if (!swapped)
+        return other->div(MakePtr<BasicObj>(new FloatObj(value)),true);
+      THROW(ValueError, "Cannot divide float by non-numeric object");
+    }
+
+    int asInt() override{
+      return value;
+    }
+
+    float asFloat() override{
+      return value;
+    }
+
+    std::string str() override{
+      return std::to_string(value);
+    }
+
+    bool greater(Pointer<BasicObj> other,bool) override{
+      return value>asFloat(other);
+    }
+
+    bool less(Pointer<BasicObj> other,bool) override{
+      return value<asFloat(other);
+    }
+
+    bool equal(Pointer<BasicObj> other,bool) override{
+      return value==asFloat(other);
+    }
+
+    bool asbool() override{
+      return value!=0.0f;
+    }
+
+    Pointer<BasicObj> clone() override{
+      return MakePtr<BasicObj>(new FloatObj(value));
+    }
+
+    private:
+    float asFloat(Pointer<BasicObj> other){
+      if (auto floating=dynamic_cast<FloatObj*>(other.get()))
+        return floating->value;
+      if (auto integer=dynamic_cast<IntObj*>(other.get()))
+        return static_cast<float>(integer->value);
+      THROW(ValueError, "Expected a number");
     }
 };
 

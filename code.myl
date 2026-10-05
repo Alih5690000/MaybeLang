@@ -5,6 +5,7 @@ w.present();
 running=1;
 rr=lib.Rect(0,0,100,100);
 for (;running;){
+    dt=lib.getDelta();
     events=lib.GetEvents();
     for (i=0;i<events.size();i=i+1){
         if (events[i].type=="QUIT"){ 
@@ -14,8 +15,7 @@ for (;running;){
         };
     };
     if (lib.isPressed("D")){
-        print("D pressed");
-        rr.x=rr.x+100;
+        rr.x=rr.x+100*dt;
     };
     if (lib.isPressed("Q")){ 
         print("Q is pressed");

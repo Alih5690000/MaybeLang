@@ -18,11 +18,11 @@ class SimpleWindow{
 
 class RectObject:public BasicObj{
     public:
-    RectObject(SDL_Rect re){
-        setattr("x",MakePtr<BasicObj>(new IntObj(re.x)));
-        setattr("y",MakePtr<BasicObj>(new IntObj(re.y)));
-        setattr("w",MakePtr<BasicObj>(new IntObj(re.w)));
-        setattr("h",MakePtr<BasicObj>(new IntObj(re.h)));
+    RectObject(SDL_FRect re){
+        setattr("x",MakePtr<BasicObj>(new FloatObj(re.x)));
+        setattr("y",MakePtr<BasicObj>(new FloatObj(re.y)));
+        setattr("w",MakePtr<BasicObj>(new FloatObj(re.w)));
+        setattr("h",MakePtr<BasicObj>(new FloatObj(re.h)));
     }
     Pointer<BasicObj> clone(){
         auto p=MakePtr<BasicObj>(new RectObject(*this));
@@ -66,15 +66,15 @@ class WindowObject:public BasicObj{
                 ->asInt();
             int alpha=args[1]->getitem(MakePtr<BasicObj>(new IntObj(3)))
                 ->asInt();
-            SDL_Rect r={
-                args[0]->getattr("x")->asInt(),
-                args[0]->getattr("y")->asInt(),
-                args[0]->getattr("w")->asInt(),
-                args[0]->getattr("h")->asInt()
+            SDL_FRect r={
+                args[0]->getattr("x")->asFloat(),
+                args[0]->getattr("y")->asFloat(),
+                args[0]->getattr("w")->asFloat(),
+                args[0]->getattr("h")->asFloat()
             };
             SDL_SetRenderDrawColor(window->renderer, 
                 red, green, blue, alpha);
-            SDL_RenderFillRect(window->renderer, &r);
+            SDL_RenderFillRectF(window->renderer, &r);
             return MakePtr<BasicObj>(new IntObj(0));
         }));
     }
@@ -118,8 +118,8 @@ IMPORT Namespace* Load(){
     (*na)["Rect"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
         if (args.empty())
             return MakePtr<BasicObj>(new RectObject({}));
-        SDL_Rect r={args[0]->asInt(),args[1]->asInt(),
-            args[2]->asInt(),args[3]->asInt()};
+        SDL_FRect r={args[0]->asFloat(),args[1]->asFloat(),
+            args[2]->asFloat(),args[3]->asFloat()};
         return MakePtr<BasicObj>(new RectObject(r));
     }));
     (*na)["isPressed"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
@@ -130,6 +130,16 @@ IMPORT Namespace* Load(){
             return MakePtr<BasicObj>(new BoolObject(false));
         }
         return MakePtr<BasicObj>(new BoolObject(k[sc]));
+    }));
+    (*na)["getDelta"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
+        static int start=SDL_GetTicks();
+        static int end=SDL_GetTicks();
+
+        start=SDL_GetTicks();
+        int dt=start-end;
+        end=start;
+        return MakePtr<BasicObj>(new FloatObj(dt/1000.f));
+
     }));
     return na;
 }

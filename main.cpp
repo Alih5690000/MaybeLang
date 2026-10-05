@@ -527,12 +527,12 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 LOG("FIRST NUM");
             }
             if (op=="+"){
-                sum=MakePtr<BasicObj>(new IntObj(sum->asInt() + parseExpression(curr, context)->asInt()));
+                sum=sum->add(parseExpression(curr, context), false);
                 LOG("PLUS");
             }
             if (op=="-"){
                 LOG("MINUS");
-                sum=MakePtr<BasicObj>(new IntObj(sum->asInt() - parseExpression(curr, context)->asInt()));
+                sum=sum->sub(parseExpression(curr, context), false);;
             }
             if (op=="=="){
                 sum=MakePtr<BasicObj>(new BoolObject(sum->equal(parseExpression(curr, context), false)));
@@ -577,12 +577,12 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 LOG("FIRST NUM");
             }
             if (op=="*" ){
-                sum=MakePtr<BasicObj>(new IntObj(sum->asInt() * parseExpression(curr, context)->asInt()));
+                sum=sum->mul(parseExpression(curr, context), false);
                 LOG("MULTIPLY");
             }
             if (op=="/"){
                 LOG("DIVIDE");
-                sum=MakePtr<BasicObj>(new IntObj(sum->asInt() / parseExpression(curr, context)->asInt()));
+                sum=sum->div(parseExpression(curr, context), false);
             }
             op=expression[i];
             curr.clear();
@@ -595,20 +595,20 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             LOG("FIRST NUM");
         }
         if (op=="+"){
-            sum=MakePtr<BasicObj>(new IntObj(sum->asInt() + parseExpression(curr, context)->asInt()));
+            sum=sum->add(parseExpression(curr, context), false);
             LOG("PLUS");
         }
         if (op=="-"){
             LOG("MINUS");
-            sum=MakePtr<BasicObj>(new IntObj(sum->asInt() - parseExpression(curr, context)->asInt()));
+            sum=sum->sub(parseExpression(curr, context), false);
         }
         if (op=="*"){
-            sum=MakePtr<BasicObj>(new IntObj(sum->asInt() * parseExpression(curr, context)->asInt()));
+            sum=sum->mul(parseExpression(curr, context), false);
             LOG("MULTIPLY");
         }
         if (op=="/"){
             LOG("DIVIDE");
-            sum=MakePtr<BasicObj>(new IntObj(sum->asInt() / parseExpression(curr, context)->asInt()));
+            sum=sum->div(parseExpression(curr, context), false);
         }
     }
     return sum;
