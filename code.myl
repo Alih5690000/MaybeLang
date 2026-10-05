@@ -1,11 +1,11 @@
-import("library");
-w=library.Window("lol", 950, 700);
+import("library", "lib");
+w=lib.Window("lol", 950, 700);
 w.fill(255,255,0);
 w.present();
 running=1;
-rr=library.Rect(0,0,100,100);
+rr=lib.Rect(0,0,100,100);
 for (;running;){
-    events=library.GetEvents();
+    events=lib.GetEvents();
     for (i=0;i<events.size();i=i+1){
         if (events[i].type=="QUIT"){ 
             print("QUIT GET");
@@ -13,7 +13,7 @@ for (;running;){
             break;
         };
     };
-    if (library.isPressed("Q")){ 
+    if (lib.isPressed("Q")){ 
         running=0;
     }
     w.fill(255,255,0);

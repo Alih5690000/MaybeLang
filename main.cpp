@@ -683,7 +683,10 @@ Namespace CreateContext(){
             Pointer<BasicObj> o=MakePtr<BasicObj>(
                 new InstanceObject(context, nullptr));
             o->attrs=*func();
-            context[args[0]->str()]=o;
+            if (args.size()!=2)
+                context[args[0]->str()]=o;
+            else
+                context[args[1]->str()]=o;
             return MakePtr<BasicObj>(new IntObj(0));
         })
     );
