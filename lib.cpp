@@ -1,5 +1,6 @@
 #include "classes.hpp"
 #include <SDL.h>
+#include <SDL2_image/SDL_image.h>
 
 class SimpleWindow{
     public:
@@ -23,8 +24,13 @@ class TextureObject:public BasicObj{
             SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING,
             wi, h);
     }
+    TextureObject(SimpleWindow& w, const std::string& s){
+        SDL_Surface* ss=IMG_Load(s.c_str());
+        txt=SDL_CreateTextureFromSurface(w.renderer, ss);
+        SDL_FreeSurface(ss);
+    }
     void SetAttrs(){
-        
+
     }
     ~TextureObject(){
         SDL_DestroyTexture(txt);
