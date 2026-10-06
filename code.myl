@@ -15,7 +15,16 @@ for (;running;){
         };
     };
     if (lib.isPressed("D")){
-        rr.x=rr.x+100*dt;
+        rr.x=rr.x+300*dt;
+    };
+    if (lib.isPressed("A")){
+        rr.x=rr.x-300*dt;
+    };
+    if (lib.isPressed("S")){
+        rr.y=rr.y+300*dt;
+    };
+    if (lib.isPressed("W")){
+        rr.y=rr.y-300*dt;
     };
     if (lib.isPressed("Q")){ 
         print("Q is pressed");
