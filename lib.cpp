@@ -16,6 +16,21 @@ class SimpleWindow{
     }
 };
 
+class TextureObject:public BasicObj{
+    SDL_Texture* txt;
+    TextureObject(SimpleWindow& w, int wi, int h){
+        txt=SDL_CreateTexture(w.renderer,
+            SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING,
+            wi, h);
+    }
+    void SetAttrs(){
+        
+    }
+    ~TextureObject(){
+        SDL_DestroyTexture(txt);
+    }
+};
+
 class RectObject:public BasicObj{
     public:
     RectObject(SDL_FRect re){

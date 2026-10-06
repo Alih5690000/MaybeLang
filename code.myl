@@ -1,4 +1,10 @@
 import("library", "lib");
+func(CreateSprite)(){
+    n=newObject();
+    n.rect=lib.Rect(0,0,0,0);
+    n.hp=100;
+    return(n);
+}
 aa=5;
 aa*=10;
 print(aa);
