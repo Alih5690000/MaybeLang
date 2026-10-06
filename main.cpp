@@ -485,6 +485,8 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
     std::string curr;
     std::string op="u";
     Pointer<BasicObj> sum=MakePtr<BasicObj>(new InstanceObject(context));
+    std::string prev;
+    bool assignmentInPlace=false;
     int bracketLevel=0;
     int bracketLevel2=0;
     int bracketLevel3=0;
@@ -521,7 +523,9 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
          || (i==expression.size()-1)) && !noOp)){
             LOG("OPERATOR DETECTED CURR IS "+curr);
             if (i!=expression.size()-1)
-                    curr.pop_back();
+                curr.pop_back();
+            if (assignmentInPlace)
+                curr=curr.substr(1);
             if (op=="u"){
                 sum=parseExpression(curr, context);
                 LOG("FIRST NUM");
@@ -564,6 +568,13 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 op=expression[i];
             }
             LOG("Curr is "+curr);
+            if (assignmentInPlace){
+                if (!OnlyName(prev)) THROW(ValueError, "Cannot asign to rvalue");
+                context[prev]=sum;
+                return sum;
+            }
+            if (expression[i+1]=='=') assignmentInPlace=true;
+            prev=curr;
             curr.clear();
             continue;
         }
@@ -572,6 +583,8 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
             LOG("IDK DETECTED");
             if (expression[i]=='*' || expression[i]=='/')
                 curr.pop_back();
+            if (assignmentInPlace)
+                curr=curr.substr(1);
             if (op=="u"){
                 sum=parseExpression(curr, context);
                 LOG("FIRST NUM");
@@ -585,6 +598,13 @@ Pointer<BasicObj> parseExpression(const std::string& e, Namespace& context) {
                 sum=sum->div(parseExpression(curr, context), false);
             }
             op=expression[i];
+            if (assignmentInPlace){
+                if (!OnlyName(prev)) THROW(ValueError, "Cannot asign to rvalue");
+                context[prev]=sum;
+                return sum;
+            }
+            if (expression[i+1]=='=') assignmentInPlace=true;
+            prev=curr;
             curr.clear();
             continue;
         }

@@ -1,4 +1,7 @@
 import("library", "lib");
+aa=5;
+aa*=10;
+print(aa);
 w=lib.Window("lol", 950, 700);
 w.fill(255,255,0);
 w.present();
