@@ -4,7 +4,7 @@ func(CreateSprite)(){
     n.rect=lib.Rect(0,0,0,0);
     n.hp=100;
     return(n);
-}
+};
 aa=5;
 aa*=10;
 print(aa);
@@ -13,6 +13,7 @@ w.fill(255,255,0);
 w.present();
 running=1;
 rr=lib.Rect(0,0,100,100);
+txt=lib.CreateTexture(w, "amogus.png");
 for (;running;){
     dt=lib.getDelta();
     events=lib.GetEvents();
@@ -40,6 +41,6 @@ for (;running;){
         running=0;
     };
     w.fill(255,255,0);
-    w.drawRect(rr, [255,0,0,255]);
+    txt.Draw(rr);
     w.present();
 };

@@ -66,7 +66,7 @@ class BasicObj{
     virtual bool less(Pointer<BasicObj>,bool){THROW(NotAvailable, "That is Base class (less)");};
     virtual bool equal(Pointer<BasicObj>,bool){THROW(NotAvailable, "That is Base class (equal)");};
     virtual bool asbool(){THROW(NotAvailable, "That is Base class (asbool)");};
-    virtual int asInt(){THROW(NotAvailable, "That is Base class (asInt)");};
+    virtual long long asInt(){THROW(NotAvailable, "That is Base class (asInt)");};
     virtual float asFloat(){THROW(NotAvailable, "That is Base class (asFloat)");};
     virtual Pointer<BasicObj> getattr(const std::string& s){
       auto it = attrs.find(s);
@@ -88,8 +88,8 @@ class BasicObj{
 
 class IntObj:public BasicObj{
     public:
-    int value;
-    IntObj(int v):value(v){};
+    long long value;
+    IntObj(long long v):value(v){};
 
     Pointer<BasicObj> add(Pointer<BasicObj> other,bool swapped) override{
       if (auto integer=dynamic_cast<IntObj*>(other.get())){
@@ -131,7 +131,7 @@ class IntObj:public BasicObj{
       THROW(ValueError, "Cannot divide integer by non-integer object");
     }
 
-    int asInt() override{
+    long long asInt() override{
       return value;
     }
 
@@ -217,7 +217,7 @@ class FloatObj:public BasicObj{
       THROW(ValueError, "Cannot divide float by non-numeric object");
     }
 
-    int asInt() override{
+    long long asInt() override{
       return value;
     }
 
@@ -335,7 +335,7 @@ class BoolObject:public BasicObj{
     bool value;
     BoolObject(bool v):value(v){};
 
-    int asInt() override{
+    long long asInt() override{
       return value ? 1 : 0;
     }
 

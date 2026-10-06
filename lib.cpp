@@ -19,18 +19,64 @@ class SimpleWindow{
 
 class TextureObject:public BasicObj{
     SDL_Texture* txt;
+    SimpleWindow* win;
+    std::string imagePath;
+    void SetAttrs(){
+        attrs["Draw"]=MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            if (args.size()!=1 && args.size()!=2) THROW(ValueError, 
+                "Invalid arg count");
+            SDL_FRect dstrect={
+                args[0]->getattr("x")->asFloat(),
+                args[0]->getattr("y")->asFloat(),
+                args[0]->getattr("w")->asFloat(),
+                args[0]->getattr("h")->asFloat(),
+            };
+            if (args.size()==2){
+                SDL_Rect srcrect={
+                    args[1]->getattr("x")->asInt(),
+                    args[1]->getattr("y")->asInt(),
+                    args[1]->getattr("w")->asInt(),
+                    args[1]->getattr("h")->asInt(),
+                };
+                SDL_RenderCopyF(win->renderer, txt, &srcrect, &dstrect);
+            }
+            else{
+                SDL_RenderCopyF(win->renderer, txt, NULL, &dstrect);
+            }
+            return MakePtr<BasicObj>(new IntObj(0));
+        }));
+        attrs["_target"]=MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            return MakePtr<BasicObj>(new IntObj((long long)txt));
+        }));
+    }
+    public:
     TextureObject(SimpleWindow& w, int wi, int h){
         txt=SDL_CreateTexture(w.renderer,
-            SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING,
+            SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,
             wi, h);
+        SetAttrs();
+        win=&w;
     }
     TextureObject(SimpleWindow& w, const std::string& s){
+        imagePath=s;
         SDL_Surface* ss=IMG_Load(s.c_str());
+        if (!ss) THROW(ValueError, ("IMG_Load failed: "+std::string(IMG_GetError())).c_str());
         txt=SDL_CreateTextureFromSurface(w.renderer, ss);
         SDL_FreeSurface(ss);
+        if (!txt) THROW(ValueError, ("SDL_CreateTextureFromSurface failed: "+std::string(SDL_GetError())).c_str());
+        SetAttrs();
+        win=&w;
     }
-    void SetAttrs(){
-
+    Pointer<BasicObj> clone() override{
+        SDL_Texture* prev=SDL_GetRenderTarget(win->renderer);
+        int w,h;
+        SDL_QueryTexture(txt, NULL, NULL, &w, &h);
+        TextureObject* n=new TextureObject(*win, w, h);
+        SDL_SetRenderTarget(win->renderer, n->txt);
+        SDL_RenderCopy(win->renderer, txt, NULL, NULL);
+        SDL_SetRenderTarget(win->renderer, prev);
+        n->SetAttrs();
+        return MakePtr<BasicObj>(n);
     }
     ~TextureObject(){
         SDL_DestroyTexture(txt);
@@ -98,12 +144,20 @@ class WindowObject:public BasicObj{
             SDL_RenderFillRectF(window->renderer, &r);
             return MakePtr<BasicObj>(new IntObj(0));
         }));
+        attrs["SetTarget"]=MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            if (args.size()!=1) THROW(ValueError, "Invalid arg count");
+            SDL_Texture* ptr=(SDL_Texture*)args[0]->asInt();
+            return MakePtr<BasicObj>(new IntObj(SDL_SetRenderTarget(window->renderer, ptr)));
+        }));
     }
     WindowObject(std::string title, int w, int h){
         window=MakePtr(new SimpleWindow(title, w, h));
         this->w=w;
         this->h=h;
         SetAttrs();
+    }
+    SimpleWindow& simpleWindow(){
+        return *(window.get());
     }
     Pointer<BasicObj> clone(){
         WindowObject* o=new WindowObject(*this);
@@ -113,6 +167,8 @@ class WindowObject:public BasicObj{
 };
 
 IMPORT Namespace* Load(){
+    SDL_Init(SDL_INIT_EVERYTHING);
+    IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_WEBP);
     Namespace* na=new Namespace;
     (*na)["Window"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
         if (args.size()!=3) THROW(ValueError, "Invalid args count");
@@ -161,6 +217,23 @@ IMPORT Namespace* Load(){
         end=start;
         return MakePtr<BasicObj>(new FloatObj(dt/1000.f));
 
+    }));
+    (*na)["CreateTexture"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
+        if (args.size()==3){
+            WindowObject* w=dynamic_cast<WindowObject*>(args[0].get());
+            if (!w) THROW(ValueError, "First arg is not SimpleWindow object");
+            return MakePtr<BasicObj>(new TextureObject(w->simpleWindow(),
+                args[1]->asInt(), args[2]->asInt()));
+        }
+        else if (args.size()==2){
+            WindowObject* w=dynamic_cast<WindowObject*>(args[0].get());
+            if (!w) THROW(ValueError, "First arg is not SimpleWindow object");
+            return MakePtr<BasicObj>(new TextureObject(w->simpleWindow(),
+                args[1]->str()));
+        }
+        else{
+            THROW(ValueError, "Invalid args count");
+        }
     }));
     return na;
 }
