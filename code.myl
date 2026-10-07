@@ -14,6 +14,7 @@ w.present();
 running=1;
 rr=lib.Rect(0,0,100,100);
 txt=lib.CreateTexture(w, "amogus.png");
+txt.flip=lib.FLIP_HORIZONTAL;
 for (;running;){
     dt=lib.getDelta();
     events=lib.GetEvents();

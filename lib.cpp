@@ -37,7 +37,7 @@ class TextureObject:public BasicObj{
             };
             SDL_FPoint p;
             bool nn=false;
-            if (getattr("center")->getattr("defaulted")->asbool()){
+            if (getattr("defaulted")->asbool()){
                 nn=true;
             }
             else{
