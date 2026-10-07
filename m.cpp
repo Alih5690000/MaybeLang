@@ -13,7 +13,12 @@ enum class Types{
     SET,
     GET,
     WRITE,
-    READ
+    READ,
+    GETATTR,
+    SETATTR,
+    GETITEM,
+    SETITEM,
+    CALL
 };
 
 struct Command{
@@ -75,6 +80,47 @@ bool isOnlyOneLayerOfBrackets(const std::string& e){
     return true;
 }
 
+bool startsWithOnlyName(const std::string& e, std::string& remaining, std::string& beggining){
+    for (int i=0;i<e.size();i++){
+        if (e[i]=='(' || e[i]=='[' || e[i]=='.' || e[i]=='='){
+            remaining = e.substr(i);
+            beggining = e.substr(0, i);
+            return true;
+        }
+        if (!isalpha(e[i])) return false;
+    }
+    return false;
+}
+
+std::vector<std::string> splitBy(std::string s, char delimiter) {
+    std::vector<std::string> tokens;
+    std::string token;
+    int bracketLevel=0;
+    int bracketLevel2=0;
+    int bracketLevel3=0;
+    for (char c : s) {
+        if (c == '(') bracketLevel++;
+        if (c == ')') bracketLevel--;
+        if (c == '{') bracketLevel2++;
+        if (c == '}') bracketLevel2--;
+        if (c == '[') bracketLevel3++;
+        if (c == ']') bracketLevel3--;
+        if (c == delimiter && bracketLevel==0
+            && bracketLevel2==0 && bracketLevel3==0) {
+            if (!token.empty() && bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0) {
+                tokens.push_back(token);
+                token.clear();
+            }
+        } else {
+            token += c;
+        }
+    }
+    if (!token.empty()) {
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
 Pointer<BasicObj> basicParse(std::string expression, Namespace& context){
     deleteAllSPaces(expression);
     LOG("Expression is "+expression);
@@ -113,7 +159,33 @@ class VirtualMachine{
                 s = s->mul(arg, false);
             }
             if (i->type==Types::WRITE){
-                s=basicParse(i->ar, context);
+                if (i->arg[0]==NULL)
+                    s=basicParse(i->ar, context);
+                else
+                    s=exec(i->arg, context);
+            }
+            if (i->type==Types::GETATTR){
+                auto e=s->getattr(i->ar);
+                s=e;
+            }
+            if (i->type==Types::SETITEM){
+                s->setattr(i->ar, exec(i->arg, context));
+            }
+            if (i->type==Types::GETITEM){
+                auto e=s->getitem(exec(i->arg, context));
+                s=e;
+            }
+            if (i->type==Types::CALL){
+                auto sa=splitBy(i->ar, ',');
+                std::vector<Pointer<BasicObj>> args;
+                for (auto i:sa){
+                    args.push_back(basicParse(i, context));
+                }
+                auto r=s->call(args, context);
+                s=r;
+            }
+            if (i->type==Types::SETATTR){
+                s->setattr(i->ar, exec(i->arg, context));
             }
             if (i->type==Types::SET){
                 context[exec({i->arg}, context)->str()]=s->clone();
@@ -133,6 +205,82 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     }
     if (OnlyName(expression)){
         return {new Command{Types::WRITE, {NULL}, expression}};
+    }
+    std::string rem, beg;
+    if (startsWithOnlyName(expression, rem, beg)){
+        std::vector<Command*> res;
+        res.push_back(new Command{Types::WRITE, parse(beg, n)});
+        char op=rem[0];
+        rem=rem.substr(1);
+        std::string curr;
+        for (int i=0;i<rem.size();i++){
+            curr+=rem[i];
+            if (rem[i]=='.' || rem[i]=='[' || rem[i]=='(' || 
+                i==rem.size()-1){
+                if (i!=rem.size()-1) rem.pop_back();
+                if (rem[i]=='.'){
+                    i++;
+                    while (i<rem.size() 
+                        && isalpha(rem[i]) || rem[i]=='_'){
+                        curr+=rem[i];
+                        i++;
+                    }
+                    i++;
+                    if (i!=rem.size()-1 && rem[i]=='='){
+                        i++;
+                        std::string rvalue;
+                        while (rem[i]!=';' && i<rem.size()){
+                            rvalue+=rem[i];
+                            i++;
+                        }
+                        res.push_back(new Command{Types::SETATTR, parse(rvalue, n)});
+                    }
+                    else
+                        res.push_back(new Command{Types::GETATTR, {NULL}, curr});
+                    curr.clear();
+                }
+                if (rem[i]=='('){
+                    i++;
+                    std::string inside;
+                    int bracketLevel=1;
+                    while (true){
+                        if (rem[i]=='(') bracketLevel++;
+                        if (rem[i]==')') {
+                            bracketLevel--;
+                            if (bracketLevel==0) break;
+                        }
+                        inside+=rem[i];
+                    }
+                    res.push_back(new Command{Types::CALL, {NULL}, inside});
+                }
+                if (rem[i]=='['){
+                    i++;
+                    std::string inside;
+                    int bracketLevel=1;
+                    while (true){
+                        if (rem[i]=='[') bracketLevel++;
+                        if (rem[i]==']') {
+                            bracketLevel--;
+                            if (bracketLevel==0) break;
+                        }
+                        inside+=rem[i];
+                    }
+                    i++;
+                    if (i!=rem.size()-1 && rem[i]=='='){
+                        i++;
+                        std::string rvalue;
+                        while (rem[i]!=';' && i<rem.size()){
+                            rvalue+=rem[i];
+                            i++;
+                        }
+                        res.push_back(new Command{Types::SETITEM, parse(rvalue, n)});
+                    }
+                    else
+                        res.push_back(new Command{Types::GETITEM, parse(inside, n)});
+                }
+            }
+        }
+        return res;
     }
     if (expression[0]=='"'){
         return {new Command{Types::WRITE, {NULL}, expression}};
@@ -188,11 +336,13 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
 
 int main(){
     Namespace n;
-    auto r=parse("5+(5*3)", n);
+    n["lol"]=MakePtr<BasicObj>(new InstanceObject(n));
+    n["lol"]->setattr("a", MakePtr<BasicObj>(new IntObj(67)));
+    auto r=parse("lol.a", n);
     VirtualMachine m;
     m.exec(r, n);
     for (auto i:r){
         std::cout<<(int)i->type<<std::endl;
     }
-    std::cout<<"Res is "<<m.s->str()<<std::endl;
+    std::cout<<"Res is "<<m.s->getattr("a")->str()<<std::endl;
 }
