@@ -22,7 +22,11 @@ class TextureObject:public BasicObj{
     SimpleWindow* win;
     std::string imagePath;
     void SetAttrs(){
-        attrs["Draw"]=MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+        setattr("angle",MakePtr<BasicObj>(new FloatObj(0.f)));
+        setattr("flip",MakePtr<BasicObj>(new IntObj(SDL_FLIP_NONE)));
+        setattr("center",MakePtr<BasicObj>(new EmptyObject));
+        setattr("defaulted", MakePtr<BasicObj>(new BoolObject(true)));
+        setattr("Draw",MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
             if (args.size()!=1 && args.size()!=2) THROW(ValueError, 
                 "Invalid arg count");
             SDL_FRect dstrect={
@@ -31,6 +35,15 @@ class TextureObject:public BasicObj{
                 args[0]->getattr("w")->asFloat(),
                 args[0]->getattr("h")->asFloat(),
             };
+            SDL_FPoint p;
+            bool nn=false;
+            if (getattr("center")->getattr("defaulted")->asbool()){
+                nn=true;
+            }
+            else{
+                p.x=getattr("center")->getattr("x")->asFloat();
+                p.y=getattr("center")->getattr("y")->asFloat();
+            }
             if (args.size()==2){
                 SDL_Rect srcrect={
                     args[1]->getattr("x")->asInt(),
@@ -38,13 +51,15 @@ class TextureObject:public BasicObj{
                     args[1]->getattr("w")->asInt(),
                     args[1]->getattr("h")->asInt(),
                 };
-                SDL_RenderCopyF(win->renderer, txt, &srcrect, &dstrect);
+                SDL_RenderCopyExF(win->renderer, txt, &srcrect, &dstrect, getattr("angle")->asFloat(), 
+                    (nn ? NULL : &p), (SDL_RendererFlip)getattr("flip")->asInt());
             }
             else{
-                SDL_RenderCopyF(win->renderer, txt, NULL, &dstrect);
+                SDL_RenderCopyExF(win->renderer, txt, NULL, &dstrect, getattr("angle")->asFloat(), 
+                    (nn ? NULL : &p), (SDL_RendererFlip)getattr("flip")->asInt());
             }
             return MakePtr<BasicObj>(new IntObj(0));
-        }));
+        })));
         attrs["_target"]=MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
             return MakePtr<BasicObj>(new IntObj((long long)txt));
         }));
@@ -235,5 +250,9 @@ IMPORT Namespace* Load(){
             THROW(ValueError, "Invalid args count");
         }
     }));
+    (*na)["FLIP_NONE"]=MakePtr<BasicObj>(new IntObj(SDL_FLIP_NONE));
+    (*na)["FLIP_HORIZONTAL"]=MakePtr<BasicObj>(new IntObj(SDL_FLIP_HORIZONTAL));
+    (*na)["FLIP_VERTICAL"]=MakePtr<BasicObj>(new IntObj(SDL_FLIP_VERTICAL));
+    (*na)["FLIP_BOTH"]=MakePtr<BasicObj>(new IntObj(SDL_FLIP_VERTICAL | SDL_FLIP_HORIZONTAL));
     return na;
 }

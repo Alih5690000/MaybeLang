@@ -405,6 +405,16 @@ class FunctionObject:public BasicObj{
     }
 };
 
+struct EmptyObject:public BasicObj{
+  Pointer<BasicObj> clone(){
+    auto obj=MakePtr<BasicObj>(new EmptyObject);
+    for (auto [k,v]:attrs){
+      obj->setattr(k,v);
+    }
+    return obj;
+  }
+};
+
 class NativeFunctionObject:public BasicObj{
   public:
     std::function<Pointer<BasicObj>(std::vector<Pointer<BasicObj>>,Namespace&)> func;
