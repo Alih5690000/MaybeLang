@@ -14,13 +14,18 @@ enum class Types{
     GET,
     WRITE,
     READ,
+    WRITE2,
+    READ2,
     GETATTR,
     SETATTR,
     GETITEM,
     SETITEM,
     CALL,
     FUNC_START,
-    FUNC_END
+    FUNC_END,
+    PUSH_STACK,
+    POP_STACK,
+    EXCHANGE
 };
 
 struct Command{
@@ -146,12 +151,23 @@ class VirtualMachine{
     public:
     std::vector<Pointer<BasicObj>> stack;
     Pointer<BasicObj> s;
+    Pointer<BasicObj> s2;
     std::vector<Command*> funcBody;
     std::vector<std::string> params;
     bool isFuncBody;
     int layer;
     Pointer<BasicObj> exec(std::vector<Command*> comms, Namespace& context){
         for (auto i:comms){
+            if (i->type==Types::PUSH_STACK){
+                stack.push_back(s);
+            }
+            if (i->type==Types::POP_STACK){
+                s=stack.back();
+                stack.pop_back();
+            }
+            if (i->type==Types::EXCHANGE){
+                std::swap(s, stack.back());
+            }
             if (i->type==Types::FUNC_START){
                 layer++;
                 isFuncBody=true;
@@ -192,6 +208,12 @@ class VirtualMachine{
                     s=basicParse(i->ar, context);
                 else
                     s=exec(i->arg, context);
+            }
+            if (i->type==Types::WRITE2){
+                if (i->arg[0]==NULL)
+                    s2=basicParse(i->ar, context);
+                else
+                    s2=exec(i->arg, context);
             }
             if (i->type==Types::GETATTR){
                 auto e=s->getattr(i->ar);
