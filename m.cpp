@@ -135,6 +135,30 @@ std::vector<std::string> splitBy(std::string s, char delimiter) {
     return tokens;
 }
 
+bool hasAssignment(const std::string& e){
+    int bracketLevel=0;
+    int bracketLevel2=0;
+    int bracketLevel3=0;
+    bool quoted=false;
+    for (int i=0;i<e.size();i++){
+        if (e[i]=='"' && (i==0 || e[i-1]!='\\'))
+            quoted=!quoted;
+        if (quoted) continue;
+        if (e[i]=='(') bracketLevel++;
+        if (e[i]==')') bracketLevel--;
+        if (e[i]=='{') bracketLevel2++;
+        if (e[i]=='}') bracketLevel2--;
+        if (e[i]=='[') bracketLevel3++;
+        if (e[i]==']') bracketLevel3--;
+        if (bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0
+            && e[i]=='='
+            && (i==0 || e[i-1]!='=')
+            && (i+1>=e.size() || e[i+1]!='='))
+            return true;
+    }
+    return false;
+}
+
 Pointer<BasicObj> basicParse(std::string expression, Namespace& context){
     deleteAllSPaces(expression);
     LOG("Expression is "+expression);
@@ -262,18 +286,20 @@ class VirtualMachine{
                 s=e;
             }
             if (i->type==Types::CALL){
+                LOG("GOT CALL");
+                auto callable=s;
                 std::vector<Pointer<BasicObj>> args;
                 for (auto j:i->args){
                     args.push_back(exec(j, context));
                 }
-                auto r=s->call(args, context);
+                auto r=callable->call(args, context);
                 s=r;
             }
             if (i->type==Types::SETATTR){
                 s->setattr(i->ar, exec(i->arg, context));
             }
             if (i->type==Types::SET){
-                context[exec({i->arg}, context)->str()]=s->clone();
+                context[i->ar]=s->clone();
             }
             if (i->type==Types::GET){
                 return context[exec({i->arg}, context)->str()];
@@ -421,17 +447,31 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
         }
     }*/
     std::string rem, beg;
-    if (startsWithOnlyName(expression, rem, beg)){
+    bool has=hasAssignment(expression);
+    if (startsWithOnlyName(expression, rem, beg) && (hasNoOp(expression) || has)){
+        LOG("STARTSWITHONLYNAME "+beg+" "+rem);
         std::vector<Command*> res;
-        res.push_back(new Command{Types::WRITE, parse(beg, n)});
-        char op=rem[0];
-        rem=rem.substr(1);
+        if (!has)
+            res.push_back(new Command{Types::WRITE, parse(beg, n)});
+        char op;
         std::string curr;
         for (int i=0;i<rem.size();i++){
+            LOG("CURR IS "+curr+" REM IS "+rem[i]);
             curr+=rem[i];
-            if (rem[i]=='.' || rem[i]=='[' || rem[i]=='(' || 
+            if (rem[i]=='.' || rem[i]=='[' || rem[i]=='(' || rem[i]=='=' ||
                 i==rem.size()-1){
-                if (i!=rem.size()-1) rem.pop_back();
+                if (rem[i]=='='){
+                    i++;
+                    std::string rvalue;
+                    while (rem[i]!=';' && i<rem.size()){
+                        rvalue+=rem[i];
+                        i++;
+                    }
+                    LOG("RVALUE IS "+rvalue);
+                    res.push_back(new Command{Types::WRITE, parse(rvalue, n)});
+                    res.push_back(new Command{Types::SET, {NULL},
+                       beg});
+                }
                 if (rem[i]=='.'){
                     i++;
                     while (i<rem.size() 
@@ -439,14 +479,16 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                         curr+=rem[i];
                         i++;
                     }
-                    i++;
+                    LOG("GOT .");
                     if (i!=rem.size()-1 && rem[i]=='='){
+                        LOG("GOT =");
                         i++;
                         std::string rvalue;
                         while (rem[i]!=';' && i<rem.size()){
                             rvalue+=rem[i];
                             i++;
                         }
+                        LOG("RVALUE IS "+rvalue);
                         res.push_back(new Command{Types::SETATTR, parse(rvalue, n)});
                     }
                     else
@@ -454,6 +496,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                     curr.clear();
                 }
                 if (rem[i]=='('){
+                    LOG("GOT OBJECT CALL");
                     i++;
                     std::string inside;
                     int bracketLevel=1;
@@ -464,7 +507,9 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                             if (bracketLevel==0) break;
                         }
                         inside+=rem[i];
+                        i++;
                     }
+                    LOG("INSIDE IS "+inside);
                     std::vector<std::vector<Command*>> aa;
                     auto f=splitBy(inside, ',');
                     for (auto k:f){
@@ -483,6 +528,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                             if (bracketLevel==0) break;
                         }
                         inside+=rem[i];
+                        i++;
                     }
                     i++;
                     if (i!=rem.size()-1 && rem[i]=='='){
@@ -566,13 +612,29 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
 
 int main(){
     Namespace n;
+    n["print"] = MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace&) -> Pointer<BasicObj> {
+            LOG("INSIDE PRINT");
+
+            LOG("TYPE IS "+std::string(
+                dynamic_cast<IntObj*>(args[0].get()) ? 
+                "IntObj" : "idk other "));
+
+            for (auto& arg : args)
+                std::cout << arg->str() << " ";
+
+            std::cout << std::endl;
+
+            return MakePtr<BasicObj>(new IntObj(0));
+        })
+    );
     n["lol"]=MakePtr<BasicObj>(new InstanceObject(n));
     n["lol"]->setattr("a", MakePtr<BasicObj>(new IntObj(67)));
-    auto r=parse("if(1){lol.a=52;}", n);
+    auto r=parse(R"(a=87)", n);
     VirtualMachine m;
     m.exec(r, n);
     for (auto i:r){
         std::cout<<(int)i->type<<std::endl;
     }
-    std::cout<<"Res is "<<m.s->getattr("a")->str()<<std::endl;
+    std::cout<<"Res is "<<n["a"]->str()<<std::endl;
 }
