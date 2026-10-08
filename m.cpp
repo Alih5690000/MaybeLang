@@ -168,7 +168,7 @@ class VirtualMachine{
         s=MakePtr<BasicObj>(new EmptyObject);
         for (auto i:comms){
             if (i->type==Types::JMP_IF){
-                if (exec(i->arg, context)->asbool())
+                if (!exec(i->arg, context)->asbool())
                     jmp=i->ar;
             }
             if (!jmp.empty()){
@@ -197,8 +197,8 @@ class VirtualMachine{
                 layer--;
                 if (layer==0){
                     isFuncBody=false;
-                    s=MakePtr<BasicObj>(new FunctionObjectt(
-                        params, funcBody));
+                    s=CreateFunctionObjectt(
+                        params, funcBody);
                     params.clear();
                     funcBody.clear();
                 }
@@ -322,8 +322,73 @@ Pointer<BasicObj> CreateFunctionObjectt
     return f;
 }
 
+static long long jmps=0;
+
 std::vector<Command*> parse(std::string expression, Namespace& n){
     deleteAllSPaces(expression);
+    if (expression.starts_with("if(")){
+        int i=0;
+        LOG("IF DETECTED");
+        i++;
+        std::string condition;
+        i++;
+        if (expression[i]!='(') THROW(ValueError, "Expected '(' after 'if'");
+        i++;
+        int bracketLevel=1;
+        while (bracketLevel>0 && i<expression.size()){
+            if (expression[i]=='(') bracketLevel++;
+            if (expression[i]==')'){ 
+                bracketLevel--;
+                if (bracketLevel==0) break;
+            }
+            condition+=expression[i];
+            i++;
+        }
+        LOG("Condition is "+condition);
+        if (bracketLevel!=0) THROW(ValueError, "Mismatched parentheses in 'if' condition");
+        std::string thenExpr;
+        i++;
+        if (expression[i]!='{') THROW(ValueError, "Expected '{' after 'if' condition");
+        i++;
+        int bracketLevel2=1;
+        while (bracketLevel2>0 && i<expression.size()){
+            if (expression[i]=='{') bracketLevel2++;
+            else if (expression[i]=='}'){ 
+                bracketLevel2--;
+                if (bracketLevel2==0) break;
+            }
+            thenExpr+=expression[i];
+            i++;
+        }
+        LOG("Then expression is "+thenExpr);
+        if (bracketLevel2!=0) THROW(ValueError, "Mismatched braces in 'if' expression");
+        std::string elseExpr;
+        if (expression.substr(i, 4)=="else"){
+            i+=4;
+            if (expression[i]!='{') THROW(ValueError, "Expected '{' after 'else'");
+            i++;
+            int bracketLevel2=1;
+            while (bracketLevel2>0 && i<expression.size()){
+                if (expression[i]=='{') bracketLevel2++;
+                else if (expression[i]=='}') bracketLevel2--;
+                elseExpr+=expression[i];
+                i++;
+            }
+            if (bracketLevel2!=0) THROW(ValueError, "Mismatched braces in 'else' expression");
+        }
+        std::vector<std::vector<Command*>> idks;
+        auto body=splitBy(thenExpr, ';');
+        std::vector<Command*> res;
+        res.push_back(new Command(Types::JMP_IF, parse(condition, n), std::to_string(++jmps)));
+        for (auto i:body){
+            auto nn=parse(i, n);
+            for (auto j:nn){
+                res.push_back(j);
+            }
+        }
+        res.push_back(new Command{Types::POINT, {NULL}, std::to_string(jmps)});
+        return res;
+    }
     if (OnlyNum(expression)){
         return {new Command{Types::WRITE, {NULL}, expression}};
     }
@@ -338,6 +403,21 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
             res.push_back(new Command{Types::SETATTR, {parse(a[0], n)}, a[0]});
         }
         return res;
+    }
+    auto assignment=expression.find('=');
+    if (assignment!=std::string::npos
+        && (assignment+1==expression.size() || expression[assignment+1]!='=')){
+        std::string remaining, objectName;
+        std::string target=expression.substr(0, assignment);
+        if (startsWithOnlyName(target, remaining, objectName)
+            && remaining.size()>1 && remaining[0]=='.'
+            && OnlyName(remaining.substr(1))){
+            return {
+                new Command{Types::WRITE, parse(objectName, n)},
+                new Command{Types::SETATTR, parse(expression.substr(assignment+1), n),
+                    remaining.substr(1)}
+            };
+        }
     }
     std::string rem, beg;
     if (startsWithOnlyName(expression, rem, beg)){
@@ -454,7 +534,8 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     std::string op="u";
     for (int i=0;i<expression.size();i++){
         curr+=expression[i];
-        if (expression[i]=='+' || expression[i]=='-' || expression[i]=='<' || expression[i]=='>' || i==expression.size()-1){
+        if (expression[i]=='+' || expression[i]=='-' || expression[i]=='<' || expression[i]=='>' || 
+            expression.substr(i,2)=="==" || i==expression.size()-1){
             if (i!=expression.size()-1) curr.pop_back();
             if (op=="u"){
                 res.push_back(new Command{Types::WRITE, parse(curr, n)});
@@ -471,8 +552,11 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
             if (op=="<"){
                 res.push_back(new Command{Types::LESS, parse(curr, n)});
             }
-
-            op=expression[i];
+            if (expression.substr(i,2)=="=="){
+                op=expression.substr(i,2);
+            }
+            else
+                op=expression[i];
             curr.clear();
         }
     }
@@ -483,7 +567,7 @@ int main(){
     Namespace n;
     n["lol"]=MakePtr<BasicObj>(new InstanceObject(n));
     n["lol"]->setattr("a", MakePtr<BasicObj>(new IntObj(67)));
-    auto r=parse("lol.a", n);
+    auto r=parse("if(1){lol.a=52;}", n);
     VirtualMachine m;
     m.exec(r, n);
     for (auto i:r){
