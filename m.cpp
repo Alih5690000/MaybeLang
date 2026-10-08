@@ -10,6 +10,10 @@ enum class Types{
     SUB,
     DIV,
     MUL,
+    LESS,
+    GREATER,
+    EQUAL,
+    NOT,
     SET,
     GET,
     WRITE,
@@ -218,6 +222,22 @@ class VirtualMachine{
                 auto arg = exec(i->arg, context);
                 s = s->mul(arg, false);
             }
+            if (i->type==Types::LESS){
+                auto arg = exec(i->arg, context);
+                s = MakePtr<BasicObj>(new BoolObject(s->less(arg, false)));
+            }
+            if (i->type==Types::GREATER){
+                auto arg = exec(i->arg, context);
+                s = MakePtr<BasicObj>(new BoolObject(s->greater(arg, false)));
+            }
+            if (i->type==Types::EQUAL){
+                auto arg = exec(i->arg, context);
+                s = MakePtr<BasicObj>(new BoolObject(s->equal(arg, false)));
+            }
+            if (i->type==Types::NOT){
+                auto arg = exec(i->arg, context);
+                s = MakePtr<BasicObj>(new BoolObject(!s->less(arg, false)));
+            }
             if (i->type==Types::WRITE){
                 if (i->arg[0]==NULL)
                     s=basicParse(i->ar, context);
@@ -409,18 +429,18 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     if (hasNoOp(expression)){
         std::vector<Command*> res;
         std::string curr;
-        char op='u';
+        std::string op="u";
         for (int i=0;i<expression.size();i++){
             curr+=expression[i];
             if (expression[i]=='*' || expression[i]=='/' || i==expression.size()-1){
                 if (i!=expression.size()-1) curr.pop_back();
-                if (op=='u'){
+                if (op=="u"){
                     res.push_back(new Command{Types::WRITE, parse(curr, n)});
                 }
-                if (op=='*'){
+                if (op=="*"){
                     res.push_back(new Command{Types::MUL, parse(curr, n)});
                 }
-                if (op=='/'){
+                if (op=="/"){
                     res.push_back(new Command{Types::DIV, parse(curr, n)});
                 }
                 op=expression[i];
@@ -431,20 +451,27 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     }
     std::vector<Command*> res;
     std::string curr;
-    char op='u';
+    std::string op="u";
     for (int i=0;i<expression.size();i++){
         curr+=expression[i];
-        if (expression[i]=='+' || expression[i]=='-' || i==expression.size()-1){
+        if (expression[i]=='+' || expression[i]=='-' || expression[i]=='<' || expression[i]=='>' || i==expression.size()-1){
             if (i!=expression.size()-1) curr.pop_back();
-            if (op=='u'){
+            if (op=="u"){
                 res.push_back(new Command{Types::WRITE, parse(curr, n)});
             }
-            if (op=='+'){
+            if (op=="+"){
                 res.push_back(new Command{Types::ADD, parse(curr, n)});
             }
-            if (op=='-'){
+            if (op=="-"){
                 res.push_back(new Command{Types::SUB, parse(curr, n)});
             }
+            if (op==">"){
+                res.push_back(new Command{Types::GREATER, parse(curr, n)});
+            }
+            if (op=="<"){
+                res.push_back(new Command{Types::LESS, parse(curr, n)});
+            }
+
             op=expression[i];
             curr.clear();
         }
