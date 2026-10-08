@@ -326,6 +326,7 @@ static long long jmps=0;
 
 std::vector<Command*> parse(std::string expression, Namespace& n){
     deleteAllSPaces(expression);
+    if (expression.back()==';') expression.pop_back();
     if (expression.starts_with("if(")){
         int i=0;
         LOG("IF DETECTED");
@@ -404,7 +405,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
         }
         return res;
     }
-    auto assignment=expression.find('=');
+    /*auto assignment=expression.find('=');
     if (assignment!=std::string::npos
         && (assignment+1==expression.size() || expression[assignment+1]!='=')){
         std::string remaining, objectName;
@@ -418,7 +419,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                     remaining.substr(1)}
             };
         }
-    }
+    }*/
     std::string rem, beg;
     if (startsWithOnlyName(expression, rem, beg)){
         std::vector<Command*> res;
