@@ -32,6 +32,7 @@ struct Command{
     Types type;
     std::vector<Command*> arg;
     std::string ar;
+    std::vector<std::vector<Command*>> args;
 };
 
 bool hasNoOp(const std::string& e){
@@ -157,6 +158,7 @@ class VirtualMachine{
     bool isFuncBody;
     int layer;
     Pointer<BasicObj> exec(std::vector<Command*> comms, Namespace& context){
+        s=MakePtr<BasicObj>(new EmptyObject);
         for (auto i:comms){
             if (i->type==Types::PUSH_STACK){
                 stack.push_back(s);
@@ -227,10 +229,9 @@ class VirtualMachine{
                 s=e;
             }
             if (i->type==Types::CALL){
-                auto sa=splitBy(i->ar, ',');
                 std::vector<Pointer<BasicObj>> args;
-                for (auto i:sa){
-                    args.push_back(basicParse(i, context));
+                for (auto j:i->args){
+                    args.push_back(exec(j, context));
                 }
                 auto r=s->call(args, context);
                 s=r;
@@ -296,6 +297,15 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     if (OnlyName(expression)){
         return {new Command{Types::WRITE, {NULL}, expression}};
     }
+    if (expression[0]=='{'){
+        auto arr=splitBy(expression.substr(1, expression.size()-2), ',');
+        std::vector<Command*> res;
+        for (auto i:arr){
+            auto a=splitBy(i, ':');
+            res.push_back(new Command{Types::SETATTR, {parse(a[0], n)}, a[0]});
+        }
+        return res;
+    }
     std::string rem, beg;
     if (startsWithOnlyName(expression, rem, beg)){
         std::vector<Command*> res;
@@ -341,7 +351,12 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                         }
                         inside+=rem[i];
                     }
-                    res.push_back(new Command{Types::CALL, {NULL}, inside});
+                    std::vector<std::vector<Command*>> aa;
+                    auto f=splitBy(inside, ',');
+                    for (auto k:f){
+                        aa.push_back(parse(k, n));
+                    }
+                    res.push_back(new Command{Types::CALL, {NULL}, "", aa});
                 }
                 if (rem[i]=='['){
                     i++;
