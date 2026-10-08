@@ -18,7 +18,9 @@ enum class Types{
     SETATTR,
     GETITEM,
     SETITEM,
-    CALL
+    CALL,
+    FUNC_START,
+    FUNC_END
 };
 
 struct Command{
@@ -137,11 +139,38 @@ Pointer<BasicObj> basicParse(std::string expression, Namespace& context){
     }
 }
 
+Pointer<BasicObj> CreateFunctionObjectt
+    (const std::vector<std::string>& p, std::vector<Command*> b);
+
 class VirtualMachine{
     public:
+    std::vector<Pointer<BasicObj>> stack;
     Pointer<BasicObj> s;
+    std::vector<Command*> funcBody;
+    std::vector<std::string> params;
+    bool isFuncBody;
+    int layer;
     Pointer<BasicObj> exec(std::vector<Command*> comms, Namespace& context){
         for (auto i:comms){
+            if (i->type==Types::FUNC_START){
+                layer++;
+                isFuncBody=true;
+                auto a=splitBy(i->ar, ' ');
+                params=a;
+            }
+            if (i->type==Types::FUNC_END){
+                layer--;
+                if (layer==0){
+                    isFuncBody=false;
+                    s=MakePtr<BasicObj>(new FunctionObjectt(
+                        params, funcBody));
+                    params.clear();
+                    funcBody.clear();
+                }
+            }
+            if (isFuncBody){
+                funcBody.push_back(new Command(*i));
+            }
             if (i->type==Types::ADD){
                 auto arg = exec(i->arg, context);
                 s = s->add(arg, false);
@@ -197,6 +226,45 @@ class VirtualMachine{
         return s->clone();
     }
 };
+
+class FunctionObjectt:public BasicObj{
+  public:
+    std::vector<std::string> params;
+    std::vector<Command*> body;
+    FunctionObjectt(const std::vector<std::string>& p, std::vector<Command*> b):params(p),body(b){
+      for (auto i:params){
+        LOG("Param "+i);
+      }
+    };
+
+    Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace& context) override{
+      
+      if (args.size()!=params.size()) THROW(ValueError, "Incorrect number of arguments");
+      Namespace localContext=context;
+      for (size_t i=0;i<params.size();i++){
+        localContext[params[i]]=args[i];
+        LOG("Setting "+params[i]+" to "+args[i]->str());
+      }
+      VirtualMachine vm;
+      try{
+        vm.exec(body, localContext);
+      }
+      catch(ReturnSig& s){
+        return s.sig;
+      }
+      return MakePtr<BasicObj>(new IntObj(0));
+    }
+
+    Pointer<BasicObj> clone() override{
+      return MakePtr<BasicObj>(new FunctionObjectt(params,body));
+    }
+};
+
+Pointer<BasicObj> CreateFunctionObjectt
+    (const std::vector<std::string>& p, std::vector<Command*> b){
+    Pointer<BasicObj> f=MakePtr<BasicObj>(new FunctionObjectt(p, b));
+    return f;
+}
 
 std::vector<Command*> parse(std::string expression, Namespace& n){
     deleteAllSPaces(expression);
