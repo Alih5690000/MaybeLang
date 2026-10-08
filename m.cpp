@@ -25,7 +25,9 @@ enum class Types{
     FUNC_END,
     PUSH_STACK,
     POP_STACK,
-    EXCHANGE
+    EXCHANGE,
+    JMP_IF,
+    POINT
 };
 
 struct Command{
@@ -157,9 +159,20 @@ class VirtualMachine{
     std::vector<std::string> params;
     bool isFuncBody;
     int layer;
+    std::string jmp;
     Pointer<BasicObj> exec(std::vector<Command*> comms, Namespace& context){
         s=MakePtr<BasicObj>(new EmptyObject);
         for (auto i:comms){
+            if (i->type==Types::JMP_IF){
+                if (exec(i->arg, context)->asbool())
+                    jmp=i->ar;
+            }
+            if (!jmp.empty()){
+                if (i->type==Types::POINT && i->ar==jmp){
+                    jmp.clear();
+                }
+                continue;
+            }
             if (i->type==Types::PUSH_STACK){
                 stack.push_back(s);
             }
