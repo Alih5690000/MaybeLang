@@ -525,6 +525,11 @@ class ArrayObject:public BasicObj{
       LOG("[ArrayObject] arr size is "+std::to_string(arr.size()));
       return MakePtr<BasicObj>(new IntObj(arr.size()));
     };
+    auto pppp=[this](std::vector<Pointer<BasicObj>> args, Namespace& context){
+      arr.resize(args[0]->asInt());
+      return MakePtr<BasicObj>(new IntObj(0));
+    };
+    attrs["resize"]=MakePtr<BasicObj>(new NativeFunctionObject(pppp));
     attrs["pop_back"]=MakePtr<BasicObj>(new NativeFunctionObject(pp));
     attrs["size"]=MakePtr<BasicObj>(new NativeFunctionObject(ppp));
   };

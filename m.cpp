@@ -164,6 +164,7 @@ Pointer<BasicObj> basicParse(std::string expression, Namespace& context){
     LOG("Expression is "+expression);
     if (expression.empty()) return MakePtr<BasicObj>(new IntObj(0));
     if (expression=="{}") return MakePtr<BasicObj>(new EmptyObject);
+    if (expression=="[]") return MakePtr<BasicObj>(new ArrayObject());
     if (OnlyNum(expression)){
         return MakePtr<BasicObj>(new IntObj(std::stoi(expression)));
     }
@@ -192,6 +193,12 @@ class VirtualMachine{
         std::string jmp;
         s=MakePtr<BasicObj>(new EmptyObject);
         for (auto i:comms){
+            if (!jmp.empty()){
+                if (i->type==Types::POINT && i->ar==jmp){
+                    jmp.clear();
+                }
+                continue;
+            }
             if (isFuncBody){
                 if (i->type==Types::FUNC_START){
                     layer++;
@@ -222,14 +229,13 @@ class VirtualMachine{
                 THROW(ValueError, "Unexpected function end");
             }
             if (i->type==Types::JMP_IF){
-                if (!exec(i->arg, context)->asbool())
+                LOG("JMP_IF DETECTED");
+                auto ll=exec(i->arg, context);
+                LOG("JMP_IF COND IS "+ll->str());
+                if (!ll->asbool()){
                     jmp=i->ar;
-            }
-            if (!jmp.empty()){
-                if (i->type==Types::POINT && i->ar==jmp){
-                    jmp.clear();
+                    LOG("JUMPING TO POINT N "+i->ar);
                 }
-                continue;
             }
             if (i->type==Types::PUSH_STACK){
                 stack.push_back(s);
@@ -290,7 +296,7 @@ class VirtualMachine{
                 s=e;
             }
             if (i->type==Types::SETITEM){
-                s->setattr(i->ar, exec(i->arg, context));
+                s->setitem(MakePtr<BasicObj>(new IntObj(std::stoi(i->ar))), exec(i->arg, context));
             }
             if (i->type==Types::GETITEM){
                 auto e=s->getitem(exec(i->arg, context));
@@ -364,6 +370,7 @@ static long long jmps=0;
 
 std::vector<Command*> parse(std::string expression, Namespace& n){
     deleteAllSPaces(expression);
+    LOG("PARSING "+expression);
     if (expression.back()==';') expression.pop_back();
     if (expression.starts_with("func(")){
         LOG("GOT FUNC");
@@ -476,6 +483,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
         std::vector<std::vector<Command*>> idks;
         auto body=splitBy(thenExpr, ';');
         std::vector<Command*> res;
+        int j=jmps+1;
         res.push_back(new Command(Types::JMP_IF, parse(condition, n), std::to_string(++jmps)));
         for (auto i:body){
             auto nn=parse(i, n);
@@ -483,7 +491,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                 res.push_back(j);
             }
         }
-        res.push_back(new Command{Types::POINT, {NULL}, std::to_string(jmps)});
+        res.push_back(new Command{Types::POINT, {NULL}, std::to_string(j)});
         return res;
     }
     if (OnlyNum(expression)){
@@ -500,6 +508,24 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
             auto a=splitBy(i, ':');
             LOG("MEMBER "+a[0]+" "+a[1]);
             res.push_back(new Command{Types::SETATTR, {parse(a[1], n)}, a[0]});
+        }
+        return res;
+    }
+    if (expression[0]=='['){
+        LOG("GOT ARR");
+        auto arr=splitBy(expression.substr(1, expression.size()-2), ',');
+        std::vector<Command*> res={new Command(Types::WRITE, {NULL}, "[]"),
+            new Command(Types::PUSH_STACK),
+            new Command{Types::GETATTR, {NULL}, "resize"},
+            new Command{Types::CALL, {NULL}, "", 
+                {{new Command{Types::WRITE, {NULL}, std::to_string(arr.size())}}}},
+            new Command{Types::POP_STACK}
+        };
+        int j=0;
+        for (auto i:arr){
+            res.push_back(new Command{Types::SETITEM, parse(i, n)
+                , std::to_string(j)});
+            j++;
         }
         return res;
     }
@@ -671,8 +697,13 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
             if (op=="<"){
                 res.push_back(new Command{Types::LESS, parse(curr, n)});
             }
+            if (op=="=="){
+                res.push_back(new Command{Types::EQUAL, parse(curr, n)});
+            }
             if (expression.substr(i,2)=="=="){
+                LOG("GOT ==");
                 op=expression.substr(i,2);
+                i++;
             }
             else
                 op=expression[i];
@@ -694,7 +725,7 @@ std::vector<Command*> doCodee(std::string s, Namespace& n){
     return res;
 }
 
-int main(){
+Namespace CreateContext(){
     Namespace n;
     n["print"] = MakePtr<BasicObj>(
         new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace&) -> Pointer<BasicObj> {
@@ -712,13 +743,54 @@ int main(){
             return MakePtr<BasicObj>(new IntObj(0));
         })
     );
+    n["input"] = MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace&){
+            std::string input;
+            std::getline(std::cin, input);
+            return MakePtr<BasicObj>(new StringObject(input));
+        })
+    );
+    n["newObject"] = MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace& context){
+            return MakePtr<BasicObj>(new InstanceObject(context, (args.size()==2 ? args[1]:nullptr)));
+        })
+    );
+    n["import"] = MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace& context){
+            HINSTANCE m=LoadLibraryA((args[0]->str()+".dll").c_str());
+            if (!m){
+                THROW(ValueError, "Couldnt locate .dll file named "+args[0]->str());
+            }
+            Namespace* (*func)() = 
+                (Namespace* (*)())GetProcAddress(m, "Load");
+            if (!func){
+                THROW(ValueError, "Couldnt find Load method in file "+args[0]->str());
+            }
+            Pointer<BasicObj> o=MakePtr<BasicObj>(
+                new InstanceObject(context, nullptr));
+            o->attrs=*func();
+            if (args.size()!=2)
+                context[args[0]->str()]=o;
+            else
+                context[args[1]->str()]=o;
+            return MakePtr<BasicObj>(new IntObj(0));
+        })
+    );
+    n["wait"]=MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace& context){
+            if (args.size()!=1) THROW(ValueError, "Invalid arguments count");
+            Sleep(args[0]->asInt());
+            return MakePtr<BasicObj>(new IntObj(0));
+        })
+    );
+    return n;
+}
+
+int main(){
+    Namespace n=CreateContext();
     n["lol"]=MakePtr<BasicObj>(new InstanceObject(n));
     n["lol"]->setattr("a", MakePtr<BasicObj>(new IntObj(67)));
-    auto r=doCodee(R"(a={lol:8})", n);
+    auto r=doCodee(R"(a=[1,2,3];print(a[2]);)", n);
     VirtualMachine m;
     m.exec(r, n);
-    for (auto i:r){
-        std::cout<<(int)i->type<<std::endl;
-    }
-    std::cout<<"Res is "<<n["a"]->getattr("lol")->str()<<std::endl;
 }
