@@ -191,6 +191,35 @@ class VirtualMachine{
     Pointer<BasicObj> exec(std::vector<Command*> comms, Namespace& context){
         s=MakePtr<BasicObj>(new EmptyObject);
         for (auto i:comms){
+            if (isFuncBody){
+                if (i->type==Types::FUNC_START){
+                    layer++;
+                    funcBody.push_back(new Command(*i));
+                } else if (i->type==Types::FUNC_END){
+                    layer--;
+                    if (layer==0){
+                        isFuncBody=false;
+                        s=CreateFunctionObjectt(params, funcBody);
+                        params.clear();
+                        funcBody.clear();
+                    } else {
+                        funcBody.push_back(new Command(*i));
+                    }
+                } else {
+                    funcBody.push_back(new Command(*i));
+                }
+                continue;
+            }
+            if (i->type==Types::FUNC_START){
+                layer=1;
+                isFuncBody=true;
+                params=splitBy(i->ar, ' ');
+                funcBody.clear();
+                continue;
+            }
+            if (i->type==Types::FUNC_END){
+                THROW(ValueError, "Unexpected function end");
+            }
             if (i->type==Types::JMP_IF){
                 if (!exec(i->arg, context)->asbool())
                     jmp=i->ar;
@@ -211,43 +240,14 @@ class VirtualMachine{
             if (i->type==Types::EXCHANGE){
                 std::swap(s, stack.back());
             }
-            if (i->type==Types::FUNC_START){
-                layer++;
-                isFuncBody=true;
-                auto a=splitBy(i->ar, ' ');
-                params=a;
-            }
-            if (i->type==Types::FUNC_END){
-                layer--;
-                if (layer==0){
-                    isFuncBody=false;
-                if (isFuncBody){
-                    layer++;
-                    funcBody.push_back(new Command(*i));
-                } else {
-                    layer=1;
-                    isFuncBody=true;
-                    params=splitBy(i->ar, ' ');
-                }
+            if (i->type==Types::ADD){
+                auto arg = exec(i->arg, context);
+                s = s->add(arg, false);
             }
             if (i->type==Types::SUB){
-                continue;
                 auto arg = exec(i->arg, context);
                 s = s->sub(arg, false);
-                if (i->type==Types::FUNC_END){
-                    layer--;
-                    if (layer==0){
-                        isFuncBody=false;
-                        s=CreateFunctionObjectt(params, funcBody);
-                        params.clear();
-                        funcBody.clear();
-                    } else {
-                        funcBody.push_back(new Command(*i));
-                    }
-                    continue;
-                }
             }
-                continue;
             if (i->type==Types::DIV){
                 auto arg = exec(i->arg, context);
                 s = s->div(arg, false);
@@ -316,7 +316,6 @@ class VirtualMachine{
                 return context[exec({i->arg}, context)->str()];
             }
         }
-        }
         return s->clone();
     }
 };
@@ -366,6 +365,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     deleteAllSPaces(expression);
     if (expression.back()==';') expression.pop_back();
     if (expression.starts_with("func(")){
+        LOG("GOT FUNC");
         std::string name;
         int i=5;
         while (i<expression.size() && expression[i]!=')') {
@@ -705,5 +705,5 @@ int main(){
     for (auto i:r){
         std::cout<<(int)i->type<<std::endl;
     }
-    n["lol"]->call({MakePtr<BasicObj>(new IntObj(99))}, n);
+    n["lol"]->call({MakePtr<BasicObj>(new IntObj(1488))}, n);
 }
