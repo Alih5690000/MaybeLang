@@ -185,8 +185,8 @@ class VirtualMachine{
     Pointer<BasicObj> s2;
     std::vector<Command*> funcBody;
     std::vector<std::string> params;
-    bool isFuncBody;
-    int layer;
+    bool isFuncBody=false;
+    int layer=0;
     std::string jmp;
     Pointer<BasicObj> exec(std::vector<Command*> comms, Namespace& context){
         s=MakePtr<BasicObj>(new EmptyObject);
@@ -221,23 +221,33 @@ class VirtualMachine{
                 layer--;
                 if (layer==0){
                     isFuncBody=false;
-                    s=CreateFunctionObjectt(
-                        params, funcBody);
-                    params.clear();
-                    funcBody.clear();
+                if (isFuncBody){
+                    layer++;
+                    funcBody.push_back(new Command(*i));
+                } else {
+                    layer=1;
+                    isFuncBody=true;
+                    params=splitBy(i->ar, ' ');
                 }
             }
-            if (isFuncBody){
-                funcBody.push_back(new Command(*i));
-            }
-            if (i->type==Types::ADD){
-                auto arg = exec(i->arg, context);
-                s = s->add(arg, false);
-            }
             if (i->type==Types::SUB){
+                continue;
                 auto arg = exec(i->arg, context);
                 s = s->sub(arg, false);
+                if (i->type==Types::FUNC_END){
+                    layer--;
+                    if (layer==0){
+                        isFuncBody=false;
+                        s=CreateFunctionObjectt(params, funcBody);
+                        params.clear();
+                        funcBody.clear();
+                    } else {
+                        funcBody.push_back(new Command(*i));
+                    }
+                    continue;
+                }
             }
+                continue;
             if (i->type==Types::DIV){
                 auto arg = exec(i->arg, context);
                 s = s->div(arg, false);
@@ -289,8 +299,9 @@ class VirtualMachine{
                 LOG("GOT CALL");
                 auto callable=s;
                 std::vector<Pointer<BasicObj>> args;
+                VirtualMachine ma;
                 for (auto j:i->args){
-                    args.push_back(exec(j, context));
+                    args.push_back(ma.exec(j, context));
                 }
                 auto r=callable->call(args, context);
                 s=r;
@@ -304,6 +315,7 @@ class VirtualMachine{
             if (i->type==Types::GET){
                 return context[exec({i->arg}, context)->str()];
             }
+        }
         }
         return s->clone();
     }
@@ -353,6 +365,63 @@ static long long jmps=0;
 std::vector<Command*> parse(std::string expression, Namespace& n){
     deleteAllSPaces(expression);
     if (expression.back()==';') expression.pop_back();
+    if (expression.starts_with("func(")){
+        std::string name;
+        int i=5;
+        while (i<expression.size() && expression[i]!=')') {
+            name+=expression[i];
+            i++;
+        }
+        if (i>=expression.size() || expression[i]!=')') THROW(ValueError, "Expected ')' after function name");
+        std::string insideBrackets;
+        i+=2;
+        int bracketLevel=1;
+        while (bracketLevel>0 && i<expression.size()){
+            if (expression[i]=='(') bracketLevel++;
+            else if (expression[i]==')') {
+                bracketLevel--;
+                if (bracketLevel==0) break;
+            }
+            if (expression[i]!=',')
+                insideBrackets+=expression[i];
+            else
+                insideBrackets+=' ';
+            i++;
+        }
+        auto res=splitBy(insideBrackets,',');
+        std::vector<std::string> params;
+
+        for (auto &r:res){
+            params.push_back(r);
+        }
+        i++;
+        if (i>=expression.size() || expression[i]!='{') THROW(ValueError, "Expected '{' after function parameters");
+        std::string body;
+        i++;
+        int bracketLevel2=1;
+        while (bracketLevel2>0 && i<expression.size()){
+            if (expression[i]=='{') bracketLevel2++;
+            else if (expression[i]=='}') {
+                bracketLevel2--;
+                if (bracketLevel2==0) break;
+            }
+            body+=expression[i];
+            i++;
+        }
+        std::vector<Command*> re;
+        re.push_back(new Command{Types::FUNC_START, {NULL}, insideBrackets});
+        VirtualMachine mm;
+        auto f=splitBy(body, ';');
+        for (auto i:f){
+            auto k=parse(i, n);
+            for (auto j:k){
+                re.push_back(j);
+            }
+        }
+        re.push_back(new Command{Types::FUNC_END});
+        re.push_back(new Command{Types::SET, {NULL}, name});
+        return re;
+    }
     if (expression.starts_with("if(")){
         int i=0;
         LOG("IF DETECTED");
@@ -630,11 +699,11 @@ int main(){
     );
     n["lol"]=MakePtr<BasicObj>(new InstanceObject(n));
     n["lol"]->setattr("a", MakePtr<BasicObj>(new IntObj(67)));
-    auto r=parse(R"(a=87)", n);
+    auto r=parse(R"(func(lol)(a){print(a);})", n);
     VirtualMachine m;
     m.exec(r, n);
     for (auto i:r){
         std::cout<<(int)i->type<<std::endl;
     }
-    std::cout<<"Res is "<<n["a"]->str()<<std::endl;
+    n["lol"]->call({MakePtr<BasicObj>(new IntObj(99))}, n);
 }
