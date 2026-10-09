@@ -31,6 +31,7 @@ enum class Types{
     POP_STACK,
     EXCHANGE,
     JMP_IF,
+    JMP_IF_NOT,
     POINT
 };
 
@@ -191,14 +192,10 @@ class VirtualMachine{
         bool isFuncBody=false;
         int layer=0;
         std::string jmp;
+        bool back=false;
         s=MakePtr<BasicObj>(new EmptyObject);
-        for (auto i:comms){
-            if (!jmp.empty()){
-                if (i->type==Types::POINT && i->ar==jmp){
-                    jmp.clear();
-                }
-                continue;
-            }
+        for (int j=0;j<comms.size();j++){
+            auto i=comms[j];
             if (isFuncBody){
                 if (i->type==Types::FUNC_START){
                     layer++;
@@ -233,8 +230,33 @@ class VirtualMachine{
                 auto ll=exec(i->arg, context);
                 LOG("JMP_IF COND IS "+ll->str());
                 if (!ll->asbool()){
-                    jmp=i->ar;
-                    LOG("JUMPING TO POINT N "+i->ar);
+                    auto it=std::find_if(comms.begin(), comms.end(),
+                        [&](const auto& x) {
+                            if (x->type==Types::POINT && x->ar==i->ar){
+                                return true;
+                            }
+                            return false;
+                        }
+                    );
+                    j+=it-comms.begin();
+                }
+            }
+            if (i->type==Types::JMP_IF_NOT){
+                LOG("JMP_IF_NOT DETECTED");
+                auto ll=exec(i->arg, context);
+                LOG("JMP_IF_NOT COND IS "+ll->str());
+                LOG("BEFORE J IS "+std::to_string(j));
+                if (ll->asbool()){
+                    auto it=std::find_if(comms.begin(), comms.end(),
+                        [&](const auto& x) {
+                            if (x->type==Types::POINT && x->ar==i->ar){
+                                return true;
+                            }
+                            return false;
+                        }
+                    );
+                    j=it-comms.begin()-1;
+                    LOG("J IS "+std::to_string(j));
                 }
             }
             if (i->type==Types::PUSH_STACK){
@@ -429,6 +451,68 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
         re.push_back(new Command{Types::FUNC_END});
         re.push_back(new Command{Types::SET, {NULL}, name});
         return re;
+    }
+    if (expression.starts_with("for(")){
+        int i=3;
+        if (expression[i]!='(') THROW(ValueError, "Expected '(' after 'for'");
+        i++;
+        std::string initExpr;
+        while (i<expression.size() && expression[i]!=';'){
+            initExpr+=expression[i];
+            i++;
+        }
+        if (i>=expression.size() || expression[i]!=';') THROW(ValueError, "Expected ';' after 'for' initialization");
+        i++;
+        std::string conditionExpr;
+        while (i<expression.size() && expression[i]!=';'){
+            conditionExpr+=expression[i];
+            i++;
+        }
+        if (i>=expression.size() || expression[i]!=';') THROW(ValueError, "Expected ';' after 'for' condition");
+        i++;
+        std::string stepExpr;
+        while (i<expression.size() && expression[i]!=')'){
+            stepExpr+=expression[i];
+            i++;
+        }
+        if (i>=expression.size() || expression[i]!=')') THROW(ValueError, "Expected ')' after 'for' step");
+        i++;
+        if (expression[i]!='{') THROW(ValueError, "Expected '{' after 'for' loop header");
+        i++;
+        std::string bodyExpr;
+        int bracketLevel=1;
+        while (bracketLevel>0 && i<expression.size()){
+            if (expression[i]=='{') bracketLevel++;
+            else if (expression[i]=='}') {
+                bracketLevel--;
+                if (bracketLevel==0) break;
+            }
+            bodyExpr+=expression[i];
+            i++;
+        }
+        if (bracketLevel!=0) THROW(ValueError, "Mismatched braces in 'for' loop body");
+        LOG("For is "+initExpr+' '+conditionExpr+' '+stepExpr+' '+bodyExpr);
+        auto initResult = parse(initExpr, n);
+        auto condResult = parse(conditionExpr, n);
+        auto bodyResult = splitBy(bodyExpr, ';');
+        auto stepResult = parse(stepExpr, n);
+        std::vector<Command*> res;
+        int j=++jmps;
+        for (auto i:initResult){
+            res.push_back(i);
+        }
+        res.push_back(new Command{Types::POINT, {NULL}, std::to_string(j)});
+        for (auto i:bodyResult){
+            auto r=parse(i, n);
+            for (auto j:r){
+                res.push_back(j);
+            }
+        }
+        for (auto i:stepResult){
+            res.push_back(i);
+        }
+        res.push_back(new Command{Types::JMP_IF_NOT, condResult, std::to_string(j)});
+        return res;
     }
     if (expression.starts_with("if(")){
         int i=0;
@@ -790,7 +874,7 @@ int main(){
     Namespace n=CreateContext();
     n["lol"]=MakePtr<BasicObj>(new InstanceObject(n));
     n["lol"]->setattr("a", MakePtr<BasicObj>(new IntObj(67)));
-    auto r=doCodee(R"(a=[1,2,3];print(a[2]);)", n);
+    auto r=doCodee(R"(for(i=0;i<5;i=i+1){print(i)})", n);
     VirtualMachine m;
     m.exec(r, n);
 }
