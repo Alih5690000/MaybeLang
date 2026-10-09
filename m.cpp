@@ -163,6 +163,7 @@ Pointer<BasicObj> basicParse(std::string expression, Namespace& context){
     deleteAllSPaces(expression);
     LOG("Expression is "+expression);
     if (expression.empty()) return MakePtr<BasicObj>(new IntObj(0));
+    if (expression=="{}") return MakePtr<BasicObj>(new EmptyObject);
     if (OnlyNum(expression)){
         return MakePtr<BasicObj>(new IntObj(std::stoi(expression)));
     }
@@ -180,15 +181,15 @@ Pointer<BasicObj> CreateFunctionObjectt
 
 class VirtualMachine{
     public:
-    std::vector<Pointer<BasicObj>> stack;
-    Pointer<BasicObj> s;
-    Pointer<BasicObj> s2;
-    std::vector<Command*> funcBody;
-    std::vector<std::string> params;
-    bool isFuncBody=false;
-    int layer=0;
-    std::string jmp;
     Pointer<BasicObj> exec(std::vector<Command*> comms, Namespace& context){
+        std::vector<Pointer<BasicObj>> stack;
+        Pointer<BasicObj> s;
+        Pointer<BasicObj> s2;
+        std::vector<Command*> funcBody;
+        std::vector<std::string> params;
+        bool isFuncBody=false;
+        int layer=0;
+        std::string jmp;
         s=MakePtr<BasicObj>(new EmptyObject);
         for (auto i:comms){
             if (isFuncBody){
@@ -492,11 +493,13 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
         return {new Command{Types::WRITE, {NULL}, expression}};
     }
     if (expression[0]=='{'){
+        LOG("GOT DICT");
         auto arr=splitBy(expression.substr(1, expression.size()-2), ',');
-        std::vector<Command*> res;
+        std::vector<Command*> res={new Command(Types::WRITE, {NULL}, "{}")};
         for (auto i:arr){
             auto a=splitBy(i, ':');
-            res.push_back(new Command{Types::SETATTR, {parse(a[0], n)}, a[0]});
+            LOG("MEMBER "+a[0]+" "+a[1]);
+            res.push_back(new Command{Types::SETATTR, {parse(a[1], n)}, a[0]});
         }
         return res;
     }
@@ -679,6 +682,18 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     return res;
 }
 
+std::vector<Command*> doCodee(std::string s, Namespace& n){
+    std::vector<Command*> res;
+    auto a=splitBy(s, ';');
+    for (auto i:a){
+        auto k=parse(i, n);
+        for (auto j:k){
+            res.push_back(j);
+        }
+    }
+    return res;
+}
+
 int main(){
     Namespace n;
     n["print"] = MakePtr<BasicObj>(
@@ -699,11 +714,11 @@ int main(){
     );
     n["lol"]=MakePtr<BasicObj>(new InstanceObject(n));
     n["lol"]->setattr("a", MakePtr<BasicObj>(new IntObj(67)));
-    auto r=parse(R"(func(lol)(a){print(a);})", n);
+    auto r=doCodee(R"(a={lol:8})", n);
     VirtualMachine m;
     m.exec(r, n);
     for (auto i:r){
         std::cout<<(int)i->type<<std::endl;
     }
-    n["lol"]->call({MakePtr<BasicObj>(new IntObj(1488))}, n);
+    std::cout<<"Res is "<<n["a"]->getattr("lol")->str()<<std::endl;
 }
