@@ -14,6 +14,8 @@ enum class Types{
     GREATER,
     EQUAL,
     NOT,
+    AND,
+    OR,
     SET,
     GET,
     WRITE,
@@ -298,8 +300,15 @@ class VirtualMachine{
                 s = MakePtr<BasicObj>(new BoolObject(s->equal(arg, false)));
             }
             if (i->type==Types::NOT){
+                s = MakePtr<BasicObj>(new BoolObject(!s->asbool()));
+            }
+            if (i->type==Types::AND){
                 auto arg = exec(i->arg, context);
-                s = MakePtr<BasicObj>(new BoolObject(!s->less(arg, false)));
+                s = MakePtr<BasicObj>(new BoolObject(s->asbool() && arg->asbool()));
+            }
+            if (i->type==Types::OR){
+                auto arg = exec(i->arg, context);
+                s = MakePtr<BasicObj>(new BoolObject(s->asbool() || arg->asbool()));
             }
             if (i->type==Types::WRITE){
                 if (i->arg[0]==NULL)
@@ -736,12 +745,31 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
         return parse(expression.substr(1, expression.size()-2), n);
     }
     if (hasNoOp(expression)){
+        LOG("NO OP");
         std::vector<Command*> res;
         std::string curr;
         std::string op="u";
+        int bracketLevel=0;
+        int bracketLevel2=0;
+        int bracketLevel3=0;
         for (int i=0;i<expression.size();i++){
             curr+=expression[i];
-            if (expression[i]=='*' || expression[i]=='/' || i==expression.size()-1){
+            if (expression[i]=='(')
+                bracketLevel++;
+            if (expression[i]==')')
+                bracketLevel--;
+            if (expression[i]=='{')
+                bracketLevel2++;
+            if (expression[i]=='}')
+                bracketLevel2--;
+            if (expression[i]=='[')
+                    bracketLevel3++;
+            if (expression[i]==']')
+                bracketLevel3--;
+        
+            if ((expression[i]=='*' || expression[i]=='/' || 
+                i==expression.size()-1) && (bracketLevel==0 && bracketLevel==2 &&
+                bracketLevel3==0)){
                 if (i!=expression.size()-1) curr.pop_back();
                 if (op=="u"){
                     res.push_back(new Command{Types::WRITE, parse(curr, n)});
@@ -761,10 +789,28 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     std::vector<Command*> res;
     std::string curr;
     std::string op="u";
+    int bracketLevel=0;
+    int bracketLevel2=0;
+    int bracketLevel3=0;
     for (int i=0;i<expression.size();i++){
         curr+=expression[i];
+        if (expression[i]=='(')
+            bracketLevel++;
+        if (expression[i]==')')
+            bracketLevel--;
+        if (expression[i]=='{')
+            bracketLevel2++;
+        if (expression[i]=='}')
+            bracketLevel2--;
+        if (expression[i]=='[')
+            bracketLevel3++;
+        if (expression[i]==']')
+            bracketLevel3--;
         if (expression[i]=='+' || expression[i]=='-' || expression[i]=='<' || expression[i]=='>' || 
-            expression.substr(i,2)=="==" || i==expression.size()-1){
+            expression.substr(i,2)=="==" || i==expression.size()-1 ||
+            expression.substr(i,2)=="&&" || expression.substr(i,2)=="||" && 
+            (bracketLevel==0 && bracketLevel==2 &&
+            bracketLevel3==0)){
             if (i!=expression.size()-1) curr.pop_back();
             if (op=="u"){
                 res.push_back(new Command{Types::WRITE, parse(curr, n)});
@@ -781,11 +827,18 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
             if (op=="<"){
                 res.push_back(new Command{Types::LESS, parse(curr, n)});
             }
+            if (op=="&&"){
+                res.push_back(new Command{Types::AND, parse(curr, n)});
+            }
+            if (op=="||"){
+                res.push_back(new Command{Types::OR, parse(curr, n)});
+            }
             if (op=="=="){
                 res.push_back(new Command{Types::EQUAL, parse(curr, n)});
             }
-            if (expression.substr(i,2)=="=="){
-                LOG("GOT ==");
+            if (expression.substr(i,2)=="==" || expression.substr(i,2)=="&&" 
+                || expression.substr(i,2)=="||"){
+                LOG("GOT double shi");
                 op=expression.substr(i,2);
                 i++;
             }
@@ -874,7 +927,7 @@ int main(){
     Namespace n=CreateContext();
     n["lol"]=MakePtr<BasicObj>(new InstanceObject(n));
     n["lol"]->setattr("a", MakePtr<BasicObj>(new IntObj(67)));
-    auto r=doCodee(R"(for(i=0;i<5;i=i+1){print(i)})", n);
+    auto r=doCodee(R"(print(1 && 0))", n);
     VirtualMachine m;
     m.exec(r, n);
 }
