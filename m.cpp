@@ -323,6 +323,7 @@ class VirtualMachine{
                     s2=exec(i->arg, context);
             }
             if (i->type==Types::GETATTR){
+                LOG("GETTING ATTR "+i->ar);
                 auto e=s->getattr(i->ar);
                 s=e;
             }
@@ -345,6 +346,7 @@ class VirtualMachine{
                 s=r;
             }
             if (i->type==Types::SETATTR){
+                LOG("SETTING ATTR "+i->ar);
                 s->setattr(i->ar, exec(i->arg, context));
             }
             if (i->type==Types::SET){
@@ -402,7 +404,9 @@ static long long jmps=0;
 std::vector<Command*> parse(std::string expression, Namespace& n){
     deleteAllSPaces(expression);
     LOG("PARSING "+expression);
+    if (expression.empty()) return {};
     if (expression.back()==';') expression.pop_back();
+    if (expression.empty()) return {};
     if (expression.starts_with("func(")){
         LOG("GOT FUNC");
         std::string name;
@@ -642,7 +646,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     if (startsWithOnlyName(expression, rem, beg) && (hasNoOp(expression) || has)){
         LOG("STARTSWITHONLYNAME "+beg+" "+rem);
         std::vector<Command*> res;
-        if (!has)
+        if (has)
             res.push_back(new Command{Types::WRITE, parse(beg, n)});
         char op;
         std::string curr;
@@ -651,6 +655,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
             curr+=rem[i];
             if (rem[i]=='.' || rem[i]=='[' || rem[i]=='(' || rem[i]=='=' ||
                 i==rem.size()-1){
+                if (i!=rem.size()-1) curr.pop_back();
                 if (rem[i]=='='){
                     i++;
                     std::string rvalue;
@@ -659,18 +664,18 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                         i++;
                     }
                     LOG("RVALUE IS "+rvalue);
-                    res.push_back(new Command{Types::WRITE, parse(rvalue, n)});
+                    res.push_back(new Command{Types::WRITE, parse(rvalue, n), curr});
                     res.push_back(new Command{Types::SET, {NULL},
                        beg});
                 }
                 if (rem[i]=='.'){
                     i++;
                     while (i<rem.size() 
-                        && isalpha(rem[i]) || rem[i]=='_'){
+                        && (isalpha(rem[i]) || rem[i]=='_')){
                         curr+=rem[i];
                         i++;
                     }
-                    LOG("GOT .");
+                    LOG("GOT . CURR IS "+curr);
                     if (i!=rem.size()-1 && rem[i]=='='){
                         LOG("GOT =");
                         i++;
@@ -950,6 +955,13 @@ Namespace CreateContext(){
             return MakePtr<BasicObj>(new IntObj(0));
         })
     );
+    n["return"]=MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace& context){
+            if (args.size()!=1) THROW(ValueError, "Invalid arguments count");
+            throw ReturnSig(args[0]);
+            return MakePtr<BasicObj>(new IntObj(0));
+        })
+    );
     return n;
 }
 
@@ -957,7 +969,15 @@ int main(){
     Namespace n=CreateContext();
     n["lol"]=MakePtr<BasicObj>(new InstanceObject(n));
     n["lol"]->setattr("a", MakePtr<BasicObj>(new IntObj(67)));
-    auto r=doCodee(R"(a=1;a+=5;print(a))", n);
+    auto r=doCodee(R"(
+        func(CreateShi)(){
+            a=newObject();
+            a.lol="ph";
+            return(a);
+        };
+        shi=CreateShi();
+        print(shi.lol);
+    )", n);
     VirtualMachine m;
     m.exec(r, n);
 }
