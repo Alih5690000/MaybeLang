@@ -198,6 +198,8 @@ class VirtualMachine{
         s=MakePtr<BasicObj>(new EmptyObject);
         for (int j=0;j<comms.size();j++){
             auto i=comms[j];
+            LOG("EXECING "+std::to_string((int)i->type));
+            LOG("S IS "+s->str());
             if (isFuncBody){
                 if (i->type==Types::FUNC_START){
                     layer++;
@@ -311,10 +313,15 @@ class VirtualMachine{
                 s = MakePtr<BasicObj>(new BoolObject(s->asbool() || arg->asbool()));
             }
             if (i->type==Types::WRITE){
-                if (i->arg[0]==NULL)
+                LOG("BEFORE WRITE "+s->str());
+                if (i->arg[0]==NULL){
                     s=basicParse(i->ar, context);
-                else
+                    LOG("WRITING TO S "+i->ar);
+                }
+                else{
                     s=exec(i->arg, context);
+                }
+                LOG("WROTE NOW S IS "+s->str());
             }
             if (i->type==Types::WRITE2){
                 if (i->arg[0]==NULL)
@@ -347,7 +354,9 @@ class VirtualMachine{
             }
             if (i->type==Types::SETATTR){
                 LOG("SETTING ATTR "+i->ar);
-                s->setattr(i->ar, exec(i->arg, context));
+                auto aa=exec(i->arg, context);
+                LOG("SETTING ATTR TO "+aa->str());
+                s->setattr(i->ar, aa);
             }
             if (i->type==Types::SET){
                 context[i->ar]=s->clone();
@@ -356,7 +365,7 @@ class VirtualMachine{
                 return context[exec({i->arg}, context)->str()];
             }
         }
-        return s->clone();
+        return s;
     }
 };
 
@@ -591,6 +600,9 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
         res.push_back(new Command{Types::POINT, {NULL}, std::to_string(j)});
         return res;
     }
+    if (expression[0]=='"'){
+        return {new Command{Types::WRITE, {NULL}, expression}};
+    }
     if (OnlyNum(expression)){
         return {new Command{Types::WRITE, {NULL}, expression}};
     }
@@ -646,8 +658,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     if (startsWithOnlyName(expression, rem, beg) && (hasNoOp(expression) || has)){
         LOG("STARTSWITHONLYNAME "+beg+" "+rem);
         std::vector<Command*> res;
-        if (has)
-            res.push_back(new Command{Types::WRITE, parse(beg, n)});
+        res.push_back(new Command{Types::WRITE, parse(beg, n)});
         char op;
         std::string curr;
         for (int i=0;i<rem.size();i++){
@@ -663,10 +674,12 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                         rvalue+=rem[i];
                         i++;
                     }
-                    LOG("RVALUE IS "+rvalue);
-                    res.push_back(new Command{Types::WRITE, parse(rvalue, n), curr});
+                    LOG("[=]RVALUE IS "+rvalue);
+                    res.pop_back();
+                    res.push_back(new Command{Types::WRITE, parse(rvalue, n)});
                     res.push_back(new Command{Types::SET, {NULL},
                        beg});
+                    return res;
                 }
                 if (rem[i]=='.'){
                     i++;
@@ -685,7 +698,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                             i++;
                         }
                         LOG("RVALUE IS "+rvalue);
-                        res.push_back(new Command{Types::SETATTR, parse(rvalue, n)});
+                        res.push_back(new Command{Types::SETATTR, parse(rvalue, n), curr});
                     }
                     else
                         res.push_back(new Command{Types::GETATTR, {NULL}, curr});
@@ -734,7 +747,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                             rvalue+=rem[i];
                             i++;
                         }
-                        res.push_back(new Command{Types::SETITEM, parse(rvalue, n)});
+                        res.push_back(new Command{Types::SETITEM, parse(rvalue, n), inside});
                     }
                     else
                         res.push_back(new Command{Types::GETITEM, parse(inside, n)});
@@ -975,9 +988,13 @@ int main(){
             a.lol="ph";
             return(a);
         };
-        shi=CreateShi();
-        print(shi.lol);
+        g=CreateShi();
+        print(g.lol);
     )", n);
     VirtualMachine m;
+    LOG("EXECING");
+    for (auto i:r){
+        LOG("HA "+std::to_string((int)i->type));
+    }
     m.exec(r, n);
 }
