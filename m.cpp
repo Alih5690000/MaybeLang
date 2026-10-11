@@ -2,7 +2,7 @@
 #include <fstream>
 #include <string>
 #include <algorithm>
-#define DEBUG
+//#define DEBUG
 #include "classes.hpp"
 
 enum class Types{
@@ -983,13 +983,9 @@ int main(){
     n["lol"]=MakePtr<BasicObj>(new InstanceObject(n));
     n["lol"]->setattr("a", MakePtr<BasicObj>(new IntObj(67)));
     auto r=doCodee(R"(
-        func(CreateShi)(){
-            a=newObject();
-            a.lol="ph";
-            return(a);
-        };
-        g=CreateShi();
-        print(g.lol);
+        import("library","lib");
+        w=lib.Window("lol", 100, 100);
+        wait(5000);
     )", n);
     VirtualMachine m;
     LOG("EXECING");

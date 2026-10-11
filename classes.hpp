@@ -559,6 +559,16 @@ class ArrayObject:public BasicObj{
         " is absent in array, size is "+std::to_string(arr.size()));
     arr[s->asInt()]=p->clone();
   }
+  std::string str() override{
+    std::string s;
+    s+='[';
+    for (auto i:arr){
+      s+=i->str();
+      s+=',';
+    }
+    s+=']';
+    return s;
+  }
   Pointer<BasicObj> getitem(Pointer<BasicObj> s) override{
     if (s->asInt()>=arr.size())
       THROW(ValueError,"Key "+s->str()+" is absent in array");
