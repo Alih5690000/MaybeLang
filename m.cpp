@@ -242,7 +242,7 @@ class VirtualMachine{
                             return false;
                         }
                     );
-                    j+=it-comms.begin();
+                    j=it-comms.begin();
                 }
             }
             if (i->type==Types::JMP_IF_NOT){
@@ -335,10 +335,12 @@ class VirtualMachine{
                 s=e;
             }
             if (i->type==Types::SETITEM){
-                s->setitem(MakePtr<BasicObj>(new IntObj(std::stoi(i->ar))), exec(i->arg, context));
+                s->setitem(exec(i->args[0], context), exec(i->args[1], context));
             }
             if (i->type==Types::GETITEM){
-                auto e=s->getitem(exec(i->arg, context));
+                auto k=exec(i->arg, context);
+                LOG("K IS "+k->str());
+                auto e=s->getitem(k);
                 s=e;
             }
             if (i->type==Types::CALL){
@@ -520,9 +522,11 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
         auto stepResult = parse(stepExpr, n);
         std::vector<Command*> res;
         int j=++jmps;
+        int j2=++jmps;
         for (auto i:initResult){
             res.push_back(i);
         }
+        res.push_back(new Command{Types::JMP_IF, condResult, std::to_string(j2)});
         res.push_back(new Command{Types::POINT, {NULL}, std::to_string(j)});
         for (auto i:bodyResult){
             auto r=parse(i, n);
@@ -534,6 +538,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
             res.push_back(i);
         }
         res.push_back(new Command{Types::JMP_IF_NOT, condResult, std::to_string(j)});
+        res.push_back(new Command{Types::POINT, {NULL}, std::to_string(j2)});
         return res;
     }
     if (expression.starts_with("if(")){
@@ -589,8 +594,8 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
         std::vector<std::vector<Command*>> idks;
         auto body=splitBy(thenExpr, ';');
         std::vector<Command*> res;
-        int j=jmps+1;
-        res.push_back(new Command(Types::JMP_IF, parse(condition, n), std::to_string(++jmps)));
+        int j=++jmps;
+        res.push_back(new Command(Types::JMP_IF, parse(condition, n), std::to_string(j)));
         for (auto i:body){
             auto nn=parse(i, n);
             for (auto j:nn){
@@ -632,8 +637,8 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
         };
         int j=0;
         for (auto i:arr){
-            res.push_back(new Command{Types::SETITEM, parse(i, n)
-                , std::to_string(j)});
+            res.push_back(new Command(Types::SETITEM, {NULL}, "", 
+                {parse(std::to_string(j), n), parse(i, n)}));
             j++;
         }
         return res;
@@ -747,7 +752,8 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                             rvalue+=rem[i];
                             i++;
                         }
-                        res.push_back(new Command{Types::SETITEM, parse(rvalue, n), inside});
+                         res.push_back(new Command(Types::SETITEM, {NULL}, "", 
+                            {parse(inside, n), parse(rvalue, n)}));
                     }
                     else
                         res.push_back(new Command{Types::GETITEM, parse(inside, n)});
@@ -983,9 +989,53 @@ int main(){
     n["lol"]=MakePtr<BasicObj>(new InstanceObject(n));
     n["lol"]->setattr("a", MakePtr<BasicObj>(new IntObj(67)));
     auto r=doCodee(R"(
-        import("library","lib");
-        w=lib.Window("lol", 100, 100);
-        wait(5000);
+        import("library", "lib");
+func(CreateSprite)(){
+    n=newObject();
+    n.rect=lib.Rect(0,0,0,0);
+    n.hp=100;
+    return(n);
+};
+aa=5;
+aa*=10;
+print(aa);
+w=lib.Window("lol", 950, 700);
+w.fill(255,255,0);
+w.present();
+running=1;
+rr=lib.Rect(0,0,100,100);
+txt=lib.CreateTexture(w, "amogus.png");
+txt.flip=lib.FLIP_HORIZONTAL;
+for (;running;){
+    dt=lib.getDelta();
+    events=lib.GetEvents();
+    for (i=0;i<events.size();i=i+1){
+        if (events[i].type=="QUIT"){ 
+            print("QUIT GET");
+            running=0;
+            break;
+        };
+    };
+    if (lib.isPressed("D")){
+        rr.x=rr.x+300*dt;
+    };
+    if (lib.isPressed("A")){
+        rr.x=rr.x-300*dt;
+    };
+    if (lib.isPressed("S")){
+        rr.y=rr.y+300*dt;
+    };
+    if (lib.isPressed("W")){
+        rr.y=rr.y-300*dt;
+    };
+    if (lib.isPressed("Q")){ 
+        print("Q is pressed");
+        running=0;
+    };
+    w.fill(255,255,0);
+    txt.Draw(rr);
+    w.present();
+};
     )", n);
     VirtualMachine m;
     LOG("EXECING");
