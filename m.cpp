@@ -185,7 +185,15 @@ Pointer<BasicObj> CreateFunctionObjectt
 
 class VirtualMachine{
     public:
-    Pointer<BasicObj> exec(std::vector<Command*> comms, Namespace& context){
+    std::map<std::string, int> jumps;
+    void CreateCache(std::vector<Command*>& comms) {
+        for (int i = 0; i < comms.size(); ++i) {
+            if (comms[i]->type == Types::POINT) {
+                jumps[comms[i]->ar] = i;
+            }
+        }
+    }
+    Pointer<BasicObj> exec(std::vector<Command*>& comms, Namespace& context){
         std::vector<Pointer<BasicObj>> stack;
         Pointer<BasicObj> s;
         Pointer<BasicObj> s2;
@@ -234,15 +242,7 @@ class VirtualMachine{
                 auto ll=exec(i->arg, context);
                 LOG("JMP_IF COND IS "+ll->str());
                 if (!ll->asbool()){
-                    auto it=std::find_if(comms.begin(), comms.end(),
-                        [&](const auto& x) {
-                            if (x->type==Types::POINT && x->ar==i->ar){
-                                return true;
-                            }
-                            return false;
-                        }
-                    );
-                    j=it-comms.begin();
+                    j=jumps[i->ar];
                 }
             }
             if (i->type==Types::JMP_IF_NOT){
@@ -251,15 +251,7 @@ class VirtualMachine{
                 LOG("JMP_IF_NOT COND IS "+ll->str());
                 LOG("BEFORE J IS "+std::to_string(j));
                 if (ll->asbool()){
-                    auto it=std::find_if(comms.begin(), comms.end(),
-                        [&](const auto& x) {
-                            if (x->type==Types::POINT && x->ar==i->ar){
-                                return true;
-                            }
-                            return false;
-                        }
-                    );
-                    j=it-comms.begin()-1;
+                    j=jumps[i->ar];
                     LOG("J IS "+std::to_string(j));
                 }
             }
@@ -1042,5 +1034,6 @@ for (;running;){
     for (auto i:r){
         LOG("HA "+std::to_string((int)i->type));
     }
+    m.CreateCache(r);
     m.exec(r, n);
 }
