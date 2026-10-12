@@ -937,6 +937,12 @@ Namespace CreateContext(){
             return MakePtr<BasicObj>(new InstanceObject(context, (args.size()==2 ? args[1]:nullptr)));
         })
     );
+    n["cmd"] = MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace& context){
+            system(args[0]->str().c_str());
+            return MakePtr<BasicObj>(new IntObj(0));
+        })
+    );
     n["import"] = MakePtr<BasicObj>(
         new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace& context){
             HINSTANCE m=LoadLibraryA((args[0]->str()+".dll").c_str());
@@ -975,64 +981,24 @@ Namespace CreateContext(){
     return n;
 }
 
-int main(){
+int main(int argc, char** argv){
+    try {
     Namespace n=CreateContext();
-    n["lol"]=MakePtr<BasicObj>(new InstanceObject(n));
-    n["lol"]->setattr("a", MakePtr<BasicObj>(new IntObj(67)));
-    auto r=doCodee(R"(
-        import("library", "lib");
-func(CreateSprite)(){
-    n=newObject();
-    n.rect=lib.Rect(0,0,0,0);
-    n.hp=100;
-    return(n);
-};
-aa=5;
-aa*=10;
-print(aa);
-w=lib.Window("lol", 950, 700);
-w.fill(255,255,0);
-w.present();
-running=1;
-rr=lib.Rect(0,0,100,100);
-txt=lib.CreateTexture(w, "amogus.png");
-txt.flip=lib.FLIP_HORIZONTAL;
-for (;running;){
-    dt=lib.getDelta();
-    events=lib.GetEvents();
-    for (i=0;i<events.size();i=i+1){
-        if (events[i].type=="QUIT"){ 
-            print("QUIT GET");
-            running=0;
-            break;
-        };
-    };
-    if (lib.isPressed("D")){
-        rr.x=rr.x+300*dt;
-    };
-    if (lib.isPressed("A")){
-        rr.x=rr.x-300*dt;
-    };
-    if (lib.isPressed("S")){
-        rr.y=rr.y+300*dt;
-    };
-    if (lib.isPressed("W")){
-        rr.y=rr.y-300*dt;
-    };
-    if (lib.isPressed("Q")){ 
-        print("Q is pressed");
-        running=0;
-    };
-    w.fill(255,255,0);
-    txt.Draw(rr);
-    w.present();
-};
-    )", n);
+    std::ifstream file(argv[1]);
+    std::string str;
+    size_t size;
+    file.seekg(0, std::ios::end);
+    size=file.tellg();
+    str.resize(size);
+    file.seekg(0,std::ios::beg);
+    file.read(str.data(), size);
+    auto e=doCodee(str,n);
     VirtualMachine m;
-    LOG("EXECING");
-    for (auto i:r){
-        LOG("HA "+std::to_string((int)i->type));
+    m.CreateCache(e);
+    m.exec(e, n);
+    return 0;
+    } catch (const std::exception& error) {
+        std::cerr << "Error: " << error.what() << std::endl;
+        return 1;
     }
-    m.CreateCache(r);
-    m.exec(r, n);
 }
