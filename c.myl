@@ -1,2 +1,19 @@
-a="lol";
-print(a);
+import("library", "lib");
+w=lib.Window("lol", 950, 700);
+running=1;
+txt=lib.CreateTexture(w, "amogus.png");
+txt.flip=lib.FLIP_HORIZONTAL;
+rr=lib.Rect(0, 0, 950, 700);
+for (;running;){
+    dt=lib.getDelta();
+    events=lib.GetEvents();
+    for (i=0;i<events.size();i=i+1){
+        if (events[i].type=="QUIT"){ 
+            print("QUIT GET");
+            running=0;
+            break;
+        };
+    };
+    txt.Draw(rr);
+    w.present();
+};

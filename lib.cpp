@@ -63,6 +63,11 @@ class TextureObject:public BasicObj{
         attrs["_target"]=MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
             return MakePtr<BasicObj>(new IntObj((long long)txt));
         }));
+        setattr("SetSize",MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            setattr("w", args[0]->getitem(MakePtr<BasicObj>(new IntObj(0))));
+            setattr("h", args[0]->getitem(MakePtr<BasicObj>(new IntObj(1))));
+            return MakePtr<BasicObj>(new IntObj(1));
+        })));
     }
     public:
     TextureObject(SimpleWindow& w, int wi, int h){

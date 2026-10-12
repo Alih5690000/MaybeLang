@@ -165,6 +165,7 @@ bool hasAssignment(const std::string& e){
 Pointer<BasicObj> basicParse(std::string expression, Namespace& context){
     deleteAllSPaces(expression);
     LOG("Expression is "+expression);
+    if (expression=="break" || expression=="break;") throw BreakSig();
     if (expression.empty()) return MakePtr<BasicObj>(new IntObj(0));
     if (expression=="{}") return MakePtr<BasicObj>(new EmptyObject);
     if (expression=="[]") return MakePtr<BasicObj>(new ArrayObject());
@@ -188,6 +189,7 @@ Pointer<BasicObj> CreateFunctionObjectt
 
 class VirtualMachine{
     public:
+    std::vector<int> currjmp;
     std::map<std::string, int> jumps;
     void CreateCache(std::vector<Command*>& comms) {
         for (int i = 0; i < comms.size(); ++i) {
@@ -244,6 +246,7 @@ class VirtualMachine{
                 LOG("JMP_IF DETECTED");
                 auto ll=exec(i->arg, context);
                 LOG("JMP_IF COND IS "+ll->str());
+                currjmp.push_back(jumps[i->ar]);
                 if (!ll->asbool()){
                     j=jumps[i->ar];
                 }
@@ -253,9 +256,18 @@ class VirtualMachine{
                 auto ll=exec(i->arg, context);
                 LOG("JMP_IF_NOT COND IS "+ll->str());
                 LOG("BEFORE J IS "+std::to_string(j));
+                currjmp.push_back(jumps[i->ar]);
                 if (ll->asbool()){
                     j=jumps[i->ar];
                     LOG("J IS "+std::to_string(j));
+                }
+            }
+            if (i->type==Types::POINT){
+                if (currjmp.size()>1 && std::stoi(i->ar)==currjmp.back()){
+                    currjmp.pop_back();
+                }
+                else{
+                    currjmp.push_back(std::stoi(i->ar));
                 }
             }
             if (i->type==Types::PUSH_STACK){
@@ -310,7 +322,13 @@ class VirtualMachine{
             if (i->type==Types::WRITE){
                 LOG("BEFORE WRITE "+s->str());
                 if (i->arg[0]==NULL){
+                    try{
                     s=basicParse(i->ar, context);
+                    }
+                    catch(const BreakSig& s){
+                        j=currjmp.back();
+                        currjmp.pop_back();
+                    }
                     LOG("WRITING TO S "+i->ar);
                 }
                 else{
