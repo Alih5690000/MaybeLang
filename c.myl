@@ -13,6 +13,7 @@ func(ah)(arg){
         if (arg.key=="F4" && arg.alt){
             print("closing");
             running=0;
+            print("running is ", running);
         };
     };
     return(1);
@@ -20,6 +21,7 @@ func(ah)(arg){
 lib.SetEventHook(ah);
 acc=0;
 for (;running;){
+    print("running is ", running);
     dt=lib.getDelta();
     acc+=dt;
     if (acc>5){

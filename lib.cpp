@@ -205,13 +205,13 @@ Pointer<BasicObj> MakeEvent(SDL_Event e, Namespace& n){
             new StringObject("KEYDOWN")
         ));
         o->setattr("key", MakePtr<BasicObj>(
-            new StringObject(SDL_GetKeyName(e.key.keysym.scancode))
+            new StringObject(SDL_GetKeyName(e.key.keysym.sym))
         ));
         o->setattr("alt", MakePtr<BasicObj>(
-            new BoolObject((e.key.keysym.mod | KMOD_ALT))
+            new BoolObject((e.key.keysym.mod & KMOD_ALT) != 0)
         ));
         o->setattr("shift", MakePtr<BasicObj>(
-            new BoolObject((e.key.keysym.mod | KMOD_SHIFT))
+            new BoolObject((e.key.keysym.mod & KMOD_SHIFT) != 0)
         ));
     }
     else{
