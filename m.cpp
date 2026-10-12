@@ -658,7 +658,8 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     if (startsWithOnlyName(expression, rem, beg) && (hasNoOp(expression) || has)){
         LOG("STARTSWITHONLYNAME "+beg+" "+rem);
         std::vector<Command*> res;
-        res.push_back(new Command{Types::WRITE, parse(beg, n)});
+        if (!has)
+            res.push_back(new Command{Types::WRITE, parse(beg, n)});
         char op;
         std::string curr;
         for (int i=0;i<rem.size();i++){
@@ -675,7 +676,6 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                         i++;
                     }
                     LOG("[=]RVALUE IS "+rvalue);
-                    res.pop_back();
                     res.push_back(new Command{Types::WRITE, parse(rvalue, n)});
                     res.push_back(new Command{Types::SET, {NULL},
                        beg});
