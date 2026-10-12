@@ -1,10 +1,20 @@
 import("library", "lib");
+if (1){
+    print("HA");
+};
 w=lib.Window("lol", 950, 700);
 running=1;
 txt=lib.CreateTexture(w, "amogus.png");
 txt.flip=lib.FLIP_HORIZONTAL;
 rr=lib.Rect(0, 0, 950, 700);
 func(ah)(arg){
+    if (arg.type=="KEYDOWN"){
+        print("Came here");
+        if (arg.key=="F4" && arg.alt){
+            print("closing");
+            running=0;
+        };
+    };
     return(1);
 };
 lib.SetEventHook(ah);

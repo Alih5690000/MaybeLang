@@ -200,12 +200,23 @@ Pointer<BasicObj> MakeEvent(SDL_Event e, Namespace& n){
             new StringObject("QUIT")
         ));
     }
-    if (e.type==SDL_KEYDOWN){
+    else if (e.type==SDL_KEYDOWN){
         o->setattr("type", MakePtr<BasicObj>(
             new StringObject("KEYDOWN")
         ));
         o->setattr("key", MakePtr<BasicObj>(
             new StringObject(SDL_GetKeyName(e.key.keysym.scancode))
+        ));
+        o->setattr("alt", MakePtr<BasicObj>(
+            new BoolObject((e.key.keysym.mod | KMOD_ALT))
+        ));
+        o->setattr("shift", MakePtr<BasicObj>(
+            new BoolObject((e.key.keysym.mod | KMOD_SHIFT))
+        ));
+    }
+    else{
+        o->setattr("type", MakePtr<BasicObj>(
+            new StringObject("IDK")
         ));
     }
     return o;
@@ -236,14 +247,8 @@ IMPORT Namespace* Load(){
             int i=0;
             SDL_Event e;
             while (SDL_PollEvent(&e)){
-                if (e.type==SDL_QUIT){
-                    Pointer<BasicObj> o=
-                        MakePtr<BasicObj>(new InstanceObject(n));
-                    o->setattr("type", MakePtr<BasicObj>(
-                        new StringObject("QUIT")
-                    ));
-                    ((ArrayObject*)arr.get())->arr.push_back(o);
-                }
+                auto o=MakeEvent(e ,n);
+                ((ArrayObject*)arr.get())->arr.push_back(o);
             }
             LOG("[ArrayObject] size is "+std::to_string(
                 ((ArrayObject*)arr.get())->arr.size()));

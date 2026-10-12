@@ -360,9 +360,8 @@ class VirtualMachine{
                 LOG("GOT CALL");
                 auto callable=s;
                 std::vector<Pointer<BasicObj>> args;
-                VirtualMachine ma;
                 for (auto j:i->args){
-                    args.push_back(ma.exec(j, context));
+                    args.push_back(exec(j, context));
                 }
                 auto r=callable->call(args, context);
                 s=r;
@@ -403,6 +402,7 @@ class FunctionObjectt:public BasicObj{
         LOG("Setting "+params[i]+" to "+args[i]->str());
       }
       VirtualMachine vm;
+      vm.CreateCache(body);
       try{
         vm.exec(body, localContext);
       }
@@ -477,7 +477,6 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
         }
         std::vector<Command*> re;
         re.push_back(new Command{Types::FUNC_START, {NULL}, insideBrackets});
-        VirtualMachine mm;
         auto f=splitBy(body, ';');
         for (auto i:f){
             auto k=parse(i, n);
