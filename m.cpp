@@ -172,7 +172,10 @@ Pointer<BasicObj> basicParse(std::string expression, Namespace& context){
         return MakePtr<BasicObj>(new IntObj(std::stoi(expression)));
     }
     if (OnlyName(expression)){
-        return context[expression];
+        if (context.find(expression)!=context.end()) 
+            THROW(ValueError, "No variable named "+expression);
+        else
+            return context[expression];
     }
     if (expression[0]=='"'){
         return MakePtr<BasicObj>(new StringObject(expression.substr(1, 

