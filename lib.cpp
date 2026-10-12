@@ -144,11 +144,7 @@ class WindowObject:public BasicObj{
             SDL_RenderFillRect(window->renderer, &rect);
             return MakePtr<BasicObj>(new IntObj(0));
         }));
-        /*attrs["SetOvertake"] = MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
-            if (args.size()!=3 && args.size()!=4) THROW(ValueError, "Invalid arguments count");
-            
-            return MakePtr<BasicObj>(new IntObj(0));
-        }));*/
+
         attrs["drawRect"]=MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
             int red=args[1]->getitem(MakePtr<BasicObj>(new IntObj(0)))
                 ->asInt();
@@ -195,6 +191,37 @@ class WindowObject:public BasicObj{
         return MakePtr<BasicObj>(o);
     }
 };
+
+Pointer<BasicObj> MakeEvent(SDL_Event e, Namespace& n){
+    Pointer<BasicObj> o=
+        MakePtr<BasicObj>(new InstanceObject(n));
+    if (e.type==SDL_QUIT){
+        o->setattr("type", MakePtr<BasicObj>(
+            new StringObject("QUIT")
+        ));
+    }
+    if (e.type==SDL_KEYDOWN){
+        o->setattr("type", MakePtr<BasicObj>(
+            new StringObject("KEYDOWN")
+        ));
+        o->setattr("key", MakePtr<BasicObj>(
+            new StringObject(SDL_GetKeyName(e.key.keysym.scancode))
+        ));
+    }
+    return o;
+}
+
+struct Data{
+    std::vector<Pointer<BasicObj>> a;
+    Namespace* n;
+};
+
+auto Bound(void* d,SDL_Event* e){
+    Data dd=*(Data*)d;
+    return (int)dd.a[0]->call({MakeEvent(*e, *dd.n)}, *dd.n)->asInt();
+};
+
+std::vector<Data*> datas;
 
 IMPORT Namespace* Load(){
     SDL_Init(SDL_INIT_EVERYTHING);
@@ -265,9 +292,22 @@ IMPORT Namespace* Load(){
             THROW(ValueError, "Invalid args count");
         }
     }));
+    (*na)["SetEventHook"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
+        Data* d = new Data{args, &n};
+        SDL_AddEventWatch(Bound, d);
+        datas.push_back(d);
+        return MakePtr<BasicObj>(new IntObj(0));
+    }));
     (*na)["FLIP_NONE"]=MakePtr<BasicObj>(new IntObj(SDL_FLIP_NONE));
     (*na)["FLIP_HORIZONTAL"]=MakePtr<BasicObj>(new IntObj(SDL_FLIP_HORIZONTAL));
     (*na)["FLIP_VERTICAL"]=MakePtr<BasicObj>(new IntObj(SDL_FLIP_VERTICAL));
     (*na)["FLIP_BOTH"]=MakePtr<BasicObj>(new IntObj(SDL_FLIP_VERTICAL | SDL_FLIP_HORIZONTAL));
     return na;
+}
+
+IMPORT void Quit(Namespace* n){
+    for (auto i:datas){
+        SDL_DelEventWatch(Bound, i);
+        delete i;
+    }
 }

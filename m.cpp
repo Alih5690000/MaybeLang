@@ -928,6 +928,8 @@ std::vector<Command*> doCodee(std::string s, Namespace& n){
     return res;
 }
 
+std::vector<Pointer<BasicObj>> modules;
+
 Namespace CreateContext(){
     Namespace n;
     n["print"] = MakePtr<BasicObj>(
@@ -982,6 +984,16 @@ Namespace CreateContext(){
                 context[args[0]->str()]=o;
             else
                 context[args[1]->str()]=o;
+            void (*ff)(Namespace*) = 
+                (void (*)(Namespace*))GetProcAddress(m, "Quit");
+            if (ff){
+                o->attrs["__QUIT"] = MakePtr<BasicObj>(
+                    new NativeFunctionObject([ff, &o](std::vector<Pointer<BasicObj>> args, Namespace& context){
+                        ff(&o->attrs);
+                        return MakePtr<BasicObj>(new IntObj(0));
+                }));
+            }
+            modules.push_back(o);
             return MakePtr<BasicObj>(new IntObj(0));
         })
     );
@@ -1003,8 +1015,8 @@ Namespace CreateContext(){
 }
 
 int main(int argc, char** argv){
-    try {
     Namespace n=CreateContext();
+    try {
     std::ifstream file(argv[1]);
     if (file.fail()){
         if (argc==1){
@@ -1025,9 +1037,14 @@ int main(int argc, char** argv){
     VirtualMachine m;
     m.CreateCache(e);
     m.exec(e, n);
-    return 0;
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << std::endl;
+        for (auto i:modules){
+            i->attrs["__QUIT"]->call({}, n);
+        }
         return 1;
+    }
+    for (auto i:modules){
+        i->attrs["__QUIT"]->call({}, n);
     }
 }
