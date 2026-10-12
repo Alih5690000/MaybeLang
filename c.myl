@@ -21,7 +21,6 @@ func(ah)(arg){
 lib.SetEventHook(ah);
 acc=0;
 for (;running;){
-    print("running is ", running);
     dt=lib.getDelta();
     acc+=dt;
     if (acc>5){
