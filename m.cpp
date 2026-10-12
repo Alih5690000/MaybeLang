@@ -172,7 +172,7 @@ Pointer<BasicObj> basicParse(std::string expression, Namespace& context){
         return MakePtr<BasicObj>(new IntObj(std::stoi(expression)));
     }
     if (OnlyName(expression)){
-        if (context.find(expression)!=context.end()) 
+        if (context.find(expression)==context.end())
             THROW(ValueError, "No variable named "+expression);
         else
             return context[expression];
@@ -988,6 +988,14 @@ int main(int argc, char** argv){
     try {
     Namespace n=CreateContext();
     std::ifstream file(argv[1]);
+    if (file.fail()){
+        if (argc==1){
+            THROW(ValueError, "No filename was provided");
+        }
+        else{
+            THROW(ValueError, "Couldnt locate file "+std::string(argv[1]));
+        }
+    }
     std::string str;
     size_t size;
     file.seekg(0, std::ios::end);
