@@ -144,6 +144,11 @@ class WindowObject:public BasicObj{
             SDL_RenderFillRect(window->renderer, &rect);
             return MakePtr<BasicObj>(new IntObj(0));
         }));
+        /*attrs["SetOvertake"] = MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            if (args.size()!=3 && args.size()!=4) THROW(ValueError, "Invalid arguments count");
+            
+            return MakePtr<BasicObj>(new IntObj(0));
+        }));*/
         attrs["drawRect"]=MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
             int red=args[1]->getitem(MakePtr<BasicObj>(new IntObj(0)))
                 ->asInt();
@@ -168,6 +173,11 @@ class WindowObject:public BasicObj{
             if (args.size()!=1) THROW(ValueError, "Invalid arg count");
             SDL_Texture* ptr=(SDL_Texture*)args[0]->asInt();
             return MakePtr<BasicObj>(new IntObj(SDL_SetRenderTarget(window->renderer, ptr)));
+        }));
+        attrs["SetFullscreen"] = MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            if (args.size()!=1) THROW(ValueError, "Invalid arg count");
+            SDL_SetWindowFullscreen(window->window, (args[0]->asbool() ? SDL_WINDOW_FULLSCREEN:0));
+            return MakePtr<BasicObj>(new IntObj(0));
         }));
     }
     WindowObject(std::string title, int w, int h){
