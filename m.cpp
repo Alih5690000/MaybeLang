@@ -736,9 +736,8 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                         inside+=rem[i];
                         i++;
                     }
-                    i++;
-                    if (i!=rem.size()-1 && rem[i]=='='){
-                        i++;
+                    if (i+1<rem.size() && rem[i+1]=='='){
+                        i+=2;
                         std::string rvalue;
                         while (rem[i]!=';' && i<rem.size()){
                             rvalue+=rem[i];
