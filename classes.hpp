@@ -68,6 +68,9 @@ class BasicObj{
     virtual bool asbool(){THROW(NotAvailable, "That is Base class (asbool)");};
     virtual long long asInt(){THROW(NotAvailable, "That is Base class (asInt)");};
     virtual float asFloat(){THROW(NotAvailable, "That is Base class (asFloat)");};
+    virtual bool hasattr(std::string k){
+      return attrs.find(k)!=attrs.end();
+    }
     virtual Pointer<BasicObj> getattr(const std::string& s){
       auto it = attrs.find(s);
       if (it==attrs.end()) THROW(ValueError, ("Attribute "+s+" not found").c_str());

@@ -3,19 +3,13 @@ if (1){
     print("HA");
 };
 w=lib.Window("lol", 950, 700);
+w.SetFullscreen(1);
 running=1;
 txt=lib.CreateTexture(w, "amogus.png");
 txt.flip=lib.FLIP_HORIZONTAL;
 rr=lib.Rect(0, 0, 950, 700);
 func(ah)(arg){
-    if (arg.type=="KEYDOWN"){
-        print("Came here");
-        if (arg.key=="F4" && arg.alt){
-            print("closing");
-            running=0;
-            print("running is ", running);
-        };
-    };
+    
     return(1);
 };
 lib.SetEventHook(ah);
@@ -23,7 +17,7 @@ acc=0;
 for (;running;){
     dt=lib.getDelta();
     acc+=dt;
-    if (acc>5){
+    if (acc>20){
         running=0;
     };
     events=lib.GetEvents();

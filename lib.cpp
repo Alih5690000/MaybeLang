@@ -6,9 +6,9 @@ class SimpleWindow{
     public:
     SDL_Window* window;
     SDL_Renderer* renderer;
-    SimpleWindow(std::string title, int w, int h){
+    SimpleWindow(std::string title, int w, int h, Uint32 flag=SDL_WINDOW_SHOWN){
         window=SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, 
-            SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_SHOWN);
+            SDL_WINDOWPOS_CENTERED, w, h, flag);
         renderer=SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     }
     ~SimpleWindow(){
@@ -176,8 +176,12 @@ class WindowObject:public BasicObj{
             return MakePtr<BasicObj>(new IntObj(0));
         }));
     }
-    WindowObject(std::string title, int w, int h){
-        window=MakePtr(new SimpleWindow(title, w, h));
+    WindowObject(std::string title, int w, int h, Pointer<BasicObj> flags){
+        Uint32 f;
+        if (flags->hasattr("fullscreen")){
+            if (flags->getattr("fullscreen")->asbool()) f|=SDL_WINDOW_FULLSCREEN;
+        }
+        window=MakePtr(new SimpleWindow(title, w, h, f));
         this->w=w;
         this->h=h;
         SetAttrs();
@@ -239,8 +243,8 @@ IMPORT Namespace* Load(){
     IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_WEBP);
     Namespace* na=new Namespace;
     (*na)["Window"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
-        if (args.size()!=3) THROW(ValueError, "Invalid args count");
-        return MakePtr<BasicObj>(new WindowObject(args[0]->str(), args[1]->asInt(), args[2]->asInt()));
+        if (args.size()<3) THROW(ValueError, "Invalid args count");
+        return MakePtr<BasicObj>(new WindowObject(args[0]->str(), args[1]->asInt(), args[2]->asInt(), args[3]));
     }));
     (*na)["GetEvents"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
             Pointer<BasicObj> arr=MakePtr<BasicObj>(new ArrayObject);
