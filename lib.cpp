@@ -175,6 +175,16 @@ class WindowObject:public BasicObj{
             SDL_SetWindowFullscreen(window->window, (args[0]->asbool() ? SDL_WINDOW_FULLSCREEN_DESKTOP:0));
             return MakePtr<BasicObj>(new IntObj(0));
         }));
+        attrs["RaiseAbove"] = MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            if (args.size()!=0) THROW(ValueError, "Invalid arg count");
+            SDL_RaiseWindow(window->window);
+            return MakePtr<BasicObj>(new IntObj(0));
+        }));
+        attrs["GrabMouse"] = MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            if (args.size()!=1) THROW(ValueError, "Invalid arg count");
+            SDL_SetWindowGrab(window->window, (SDL_bool)args[0]->asbool());
+            return MakePtr<BasicObj>(new IntObj(0));
+        }));
     }
     WindowObject(std::string title, int w, int h){
         window=MakePtr(new SimpleWindow(title, w, h));
@@ -231,6 +241,28 @@ auto Bound(void* d,SDL_Event* e){
     Data dd=*(Data*)d;
     return (int)dd.a[0]->call({MakeEvent(*e, *dd.n)}, *dd.n)->asInt();
 };
+
+Pointer<BasicObj> currHandler;
+Namespace* currNamespace;
+
+BOOL WINAPI Bound2(DWORD type) {
+    if (!currHandler.get())
+        return FALSE;
+    switch (type) {
+        case CTRL_C_EVENT:
+            currHandler->call({MakePtr<BasicObj>(new IntObj(type))}, *currNamespace);
+            return TRUE;
+
+        case CTRL_CLOSE_EVENT:
+            currHandler->call({MakePtr<BasicObj>(new IntObj(type))}, *currNamespace);
+            return TRUE;
+
+        case CTRL_BREAK_EVENT:
+            currHandler->call({MakePtr<BasicObj>(new IntObj(type))}, *currNamespace);
+            return TRUE;
+    }
+    return FALSE;
+}
 
 std::vector<Data*> datas;
 
@@ -303,10 +335,17 @@ IMPORT Namespace* Load(){
         datas.push_back(d);
         return MakePtr<BasicObj>(new IntObj(0));
     }));
+    (*na)["SetConsoleHook"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
+        currHandler=args[0];
+        currNamespace=&n;
+        SetConsoleCtrlHandler(Bound2, TRUE);
+        return MakePtr<BasicObj>(new IntObj(0));
+    }));
     (*na)["FLIP_NONE"]=MakePtr<BasicObj>(new IntObj(SDL_FLIP_NONE));
     (*na)["FLIP_HORIZONTAL"]=MakePtr<BasicObj>(new IntObj(SDL_FLIP_HORIZONTAL));
     (*na)["FLIP_VERTICAL"]=MakePtr<BasicObj>(new IntObj(SDL_FLIP_VERTICAL));
     (*na)["FLIP_BOTH"]=MakePtr<BasicObj>(new IntObj(SDL_FLIP_VERTICAL | SDL_FLIP_HORIZONTAL));
+    (*na)["CONSOLE_CTRL_C"]=MakePtr<BasicObj>(new IntObj(CTRL_C_EVENT));
     return na;
 }
 

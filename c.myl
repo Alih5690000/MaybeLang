@@ -11,12 +11,19 @@ rr=lib.Rect(0, 0, 1000, 800);
 func(ah)(arg){
     return(1);
 };
+func(aa)(ev){
+    if (ev==lib.CONSOLE_CTRL_C){
+        cmd("start . c.myl");
+    };
+};
+lib.SetConsoleHook(aa);
+w.GrabMouse(1);
 lib.SetEventHook(ah);
 acc=0;
 for (;running;){
     dt=lib.getDelta();
     acc+=dt;
-    if (acc>5){
+    if (acc>20){
         running=0;
     };
     events=lib.GetEvents();
