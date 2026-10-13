@@ -170,6 +170,10 @@ class WindowObject:public BasicObj{
             SDL_Texture* ptr=(SDL_Texture*)args[0]->asInt();
             return MakePtr<BasicObj>(new IntObj(SDL_SetRenderTarget(window->renderer, ptr)));
         }));
+        attrs["IsFocused"]=MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            bool focused = SDL_GetWindowFlags(window->window) & SDL_WINDOW_INPUT_FOCUS;
+            return MakePtr<BasicObj>(new BoolObject(focused));
+        }));
         attrs["SetFullscreen"] = MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
             if (args.size()!=1) THROW(ValueError, "Invalid arg count");
             SDL_SetWindowFullscreen(window->window, (args[0]->asbool() ? SDL_WINDOW_FULLSCREEN_DESKTOP:0));

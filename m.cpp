@@ -439,6 +439,11 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     if (expression.empty()) return {};
     if (expression.back()==';') expression.pop_back();
     if (expression.empty()) return {};
+    if (expression[0]=='!'){
+        auto r=parse(expression.substr(1), n);
+        r.push_back(new Command{Types::NOT});
+        return r;
+    }
     if (expression.starts_with("func(")){
         LOG("GOT FUNC");
         std::string name;

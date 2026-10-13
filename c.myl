@@ -1,7 +1,4 @@
 import("library", "lib");
-if (1){
-    print("HA");
-};
 w=lib.Window("lol", 1000, 800);
 w.SetFullscreen(1);
 running=1;
@@ -23,6 +20,9 @@ acc=0;
 for (;running;){
     dt=lib.getDelta();
     acc+=dt;
+    if (!w.IsFocused()){
+        cmd("start ./m c.myl");
+    };
     if (acc>20){
         running=0;
     };
