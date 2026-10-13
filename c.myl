@@ -2,14 +2,13 @@ import("library", "lib");
 if (1){
     print("HA");
 };
-w=lib.Window("lol", 950, 700);
+w=lib.Window("lol", 1000, 800);
 w.SetFullscreen(1);
 running=1;
 txt=lib.CreateTexture(w, "amogus.png");
 txt.flip=lib.FLIP_HORIZONTAL;
-rr=lib.Rect(0, 0, 950, 700);
+rr=lib.Rect(0, 0, 1000, 800);
 func(ah)(arg){
-    
     return(1);
 };
 lib.SetEventHook(ah);
@@ -17,7 +16,7 @@ acc=0;
 for (;running;){
     dt=lib.getDelta();
     acc+=dt;
-    if (acc>20){
+    if (acc>5){
         running=0;
     };
     events=lib.GetEvents();
