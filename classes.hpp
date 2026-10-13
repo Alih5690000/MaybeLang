@@ -575,8 +575,10 @@ class ArrayObject:public BasicObj{
     std::string s;
     s+='[';
     for (auto i:arr){
-      s+=i->str();
-      s+=',';
+      if (!i->str().empty()){
+        s+=i->str();
+        s+=',';
+      }
     }
     s+=']';
     return s;

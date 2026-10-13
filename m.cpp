@@ -2,7 +2,7 @@
 #include <fstream>
 #include <string>
 #include <algorithm>
-//#define DEBUG
+#define DEBUG
 #include "classes.hpp"
 
 enum class Types{
@@ -46,10 +46,16 @@ struct Command{
 
 bool hasNoOp(const std::string& e){
     int bracketLevel=0;
+    int bracketLevel2=0;
+    int bracketLevel3=0;
     for (int i=0;i<e.size();i++){
         if (e[i]=='(') bracketLevel++;
         if (e[i]==')') bracketLevel--;
-        if (bracketLevel==0 && (
+        if (e[i]=='[') bracketLevel2++;
+        if (e[i]==']') bracketLevel2--;
+        if (e[i]=='{') bracketLevel3++;
+        if (e[i]=='}') bracketLevel3--;
+        if (bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0 &&(
                 e[i]=='+' ||
                 e[i]=='-' ||
                 e.substr(i,2)=="==" ||
@@ -156,6 +162,7 @@ bool hasAssignment(const std::string& e){
         if (bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0
             && e[i]=='='
             && (i==0 || e[i-1]!='=')
+            && (i==0 || e[i-1]!='!')
             && (i+1>=e.size() || e[i+1]!='='))
             return true;
     }
@@ -321,7 +328,7 @@ class VirtualMachine{
             }
             if (i->type==Types::WRITE){
                 LOG("BEFORE WRITE "+s->str());
-                if (i->arg[0]==NULL){
+                if (!i->arg.empty() && i->arg[0]==NULL){
                     try{
                     s=basicParse(i->ar, context);
                     }
@@ -439,7 +446,7 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     if (expression.empty()) return {};
     if (expression.back()==';') expression.pop_back();
     if (expression.empty()) return {};
-    if (expression[0]=='!'){
+    if (expression[0]=='!' && hasNoOp(expression)){
         auto r=parse(expression.substr(1), n);
         r.push_back(new Command{Types::NOT});
         return r;
@@ -869,11 +876,11 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
             bracketLevel3++;
         if (expression[i]==']')
             bracketLevel3--;
-        if (expression[i]=='+' || expression[i]=='-' || expression[i]=='<' || expression[i]=='>' || 
-            expression.substr(i,2)=="==" || i==expression.size()-1 ||
-            expression.substr(i,2)=="&&" || expression.substr(i,2)=="||" && 
-            (bracketLevel==0 && bracketLevel2==0 &&
-            bracketLevel3==0)){
+        if (((expression[i]=='+' || expression[i]=='-' || expression[i]=='<' || expression[i]=='>' ||
+            expression.substr(i,2)=="==" || expression.substr(i,2)=="!=" ||
+            expression.substr(i,2)=="&&" || expression.substr(i,2)=="||")
+            && bracketLevel==0 && bracketLevel2==0 && bracketLevel3==0)
+            || i==expression.size()-1){
             if (i!=expression.size()-1) curr.pop_back();
             if (op=="u"){
                 res.push_back(new Command{Types::WRITE, parse(curr, n)});
@@ -899,7 +906,12 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
             if (op=="=="){
                 res.push_back(new Command{Types::EQUAL, parse(curr, n)});
             }
-            if (expression[i+1]=='=' && expression.substr(i,2)!="=="){
+            if (op=="!="){
+                res.push_back(new Command{Types::EQUAL, parse(curr, n)});
+                res.push_back(new Command{Types::NOT});
+            }
+            if (expression[i+1]=='=' && expression.substr(i,2)!="=="
+                && expression.substr(i,2)!="!="){
                     LOG("GOT ASSIGNMENT IN PLACE");
                     op=expression[i];
                     i+=2;
@@ -914,7 +926,8 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
                         itog, n
                     );
                 }
-            if (expression.substr(i,2)=="==" || expression.substr(i,2)=="&&" 
+            if (expression.substr(i,2)=="==" || expression.substr(i,2)=="!="
+                || expression.substr(i,2)=="&&"
                 || expression.substr(i,2)=="||"){
                 LOG("GOT double shi");
                 op=expression.substr(i,2);
@@ -941,6 +954,7 @@ std::vector<Command*> doCodee(std::string s, Namespace& n){
 }
 
 std::vector<Pointer<BasicObj>> modules;
+std::vector<std::string> strArgs;
 
 Namespace CreateContext(){
     Namespace n;
@@ -1023,6 +1037,17 @@ Namespace CreateContext(){
             return MakePtr<BasicObj>(new IntObj(0));
         })
     );
+    n["GetArgs"]=MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace& context){
+            Pointer<BasicObj> arr=MakePtr<BasicObj>(new ArrayObject);
+            for (auto i:strArgs){
+                arr->attrs["push_back"]->call({MakePtr<BasicObj>(
+                    new StringObject(i)
+                )}, context);
+            }
+            return arr;
+        })
+    );
     return n;
 }
 
@@ -1037,6 +1062,9 @@ int main(int argc, char** argv){
         else{
             THROW(ValueError, "Couldnt locate file "+std::string(argv[1]));
         }
+    }
+    for (int i=2;i<argc;i++){
+        strArgs.push_back(argv[i]);
     }
     std::string str;
     size_t size;

@@ -1,6 +1,10 @@
 import("library", "lib");
 w=lib.Window("lol", 1000, 800);
 w.SetFullscreen(1);
+argg=GetArgs();
+if (argg.size()==0){
+    argg.push_back("null");
+};
 running=1;
 txt=lib.CreateTexture(w, "amogus.png");
 txt.flip=lib.FLIP_HORIZONTAL;
@@ -10,7 +14,7 @@ func(ah)(arg){
 };
 func(aa)(ev){
     if (ev==lib.CONSOLE_CTRL_C){
-        cmd("start ./m c.myl");
+        cmd("start ./m c.myl Child");
     };
 };
 lib.SetConsoleHook(aa);
@@ -20,10 +24,11 @@ acc=0;
 for (;running;){
     dt=lib.getDelta();
     acc+=dt;
-    if (!w.IsFocused()){
-        cmd("start ./m c.myl");
+    if ((!w.IsFocused()) && (argg[0]!="Child")){
+        cmd("start ./m c.myl Child");
+        w.RaiseAbove();
     };
-    if (acc>20){
+    if (acc>5){
         running=0;
     };
     events=lib.GetEvents();
