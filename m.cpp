@@ -396,18 +396,26 @@ class FunctionObjectt:public BasicObj{
     Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace& context) override{
       
       if (args.size()!=params.size()) THROW(ValueError, "Incorrect number of arguments");
-      Namespace localContext=context;
-      for (size_t i=0;i<params.size();i++){
-        localContext[params[i]]=args[i];
-        LOG("Setting "+params[i]+" to "+args[i]->str());
+      std::vector<Pointer<BasicObj>> olds;
+      for (auto i:params){
+        olds.push_back(context[i]);
+      }
+      for (int i=0;i<args.size();i++){
+        context[params[i]]=args[i];
       }
       VirtualMachine vm;
       vm.CreateCache(body);
       try{
-        vm.exec(body, localContext);
+        vm.exec(body, context);
       }
       catch(ReturnSig& s){
+        for (int i=0;i<params.size();i++){
+            context[params[i]]=olds[i];
+        }
         return s.sig;
+      }
+      for (int i=0;i<params.size();i++){
+         context[params[i]]=olds[i];
       }
       return MakePtr<BasicObj>(new IntObj(0));
     }
