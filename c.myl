@@ -13,7 +13,7 @@ func(ah)(arg){
 };
 func(aa)(ev){
     if (ev==lib.CONSOLE_CTRL_C){
-        cmd("start . c.myl");
+        cmd("start ./m c.myl");
     };
 };
 lib.SetConsoleHook(aa);
