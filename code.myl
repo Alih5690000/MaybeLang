@@ -1,3 +1,6 @@
+print("thats ok");
+print("thats too");
+a.lmao();
 f=CreateFile("Ha.txt");
 f.Write("LOL");
 f.Close();

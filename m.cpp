@@ -5,6 +5,11 @@
 //#define DEBUG
 #include "classes.hpp"
 
+
+#define THROW(exceptionType, message) \
+    throw exceptionType(std::string(message).c_str())
+
+
 enum class Types{
     ADD,
     SUB,
@@ -198,10 +203,14 @@ Pointer<BasicObj> basicParse(std::string expression, Namespace& context){
 Pointer<BasicObj> CreateFunctionObjectt
     (const std::vector<std::string>& p, std::vector<Command*> b);
 
+std::vector<std::pair<std::string, int>> strs;
+
 class VirtualMachine{
     public:
     std::vector<int> currjmp;
     std::map<std::string, int> jumps;
+    std::string currstr=strs[0].first;
+    int standingAt=0;
     void CreateCache(std::vector<Command*>& comms) {
         for (int i = 0; i < comms.size(); ++i) {
             if (comms[i]->type == Types::POINT) {
@@ -209,7 +218,7 @@ class VirtualMachine{
             }
         }
     }
-    Pointer<BasicObj> exec(std::vector<Command*>& comms, Namespace& context){
+    Pointer<BasicObj> exec(std::vector<Command*>& comms, Namespace& context, bool master=false){
         std::vector<Pointer<BasicObj>> stack;
         Pointer<BasicObj> s;
         Pointer<BasicObj> s2;
@@ -217,10 +226,18 @@ class VirtualMachine{
         std::vector<std::string> params;
         bool isFuncBody=false;
         int layer=0;
+        int target=strs[0].second;
         std::string jmp;
         bool back=false;
         s=MakePtr<BasicObj>(new EmptyObject);
         for (int j=0;j<comms.size();j++){
+            try{
+            if (master)
+                if (j>target-1){
+                    standingAt++;
+                    currstr=strs[standingAt].first;
+                    target+=strs[standingAt].second;
+                }
             auto i=comms[j];
             LOG("EXECING "+std::to_string((int)i->type));
             LOG("S IS "+s->str());
@@ -389,6 +406,12 @@ class VirtualMachine{
             if (i->type==Types::GET){
                 return context[exec({i->arg}, context)->str()];
             }
+            }
+            catch (const std::exception& e){
+                std::cout<<"Error is:"<<e.what()<<
+                    " While execing "<<currstr<<std::endl;
+                std::_Exit(1);
+            }
         }
         return s;
     }
@@ -417,7 +440,7 @@ class FunctionObjectt:public BasicObj{
       VirtualMachine vm;
       vm.CreateCache(body);
       try{
-        vm.exec(body, context);
+        vm.exec(body, context, true);
       }
       catch(ReturnSig& s){
         for (int i=0;i<params.size();i++){
@@ -946,10 +969,12 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
 }
 
 std::vector<Command*> doCodee(std::string s, Namespace& n){
+    strs.clear();
     std::vector<Command*> res;
     auto a=splitBy(s, ';');
     for (auto i:a){
         auto k=parse(i, n);
+        strs.push_back({i, k.size()});
         for (auto j:k){
             res.push_back(j);
         }
@@ -1085,7 +1110,7 @@ int main(int argc, char** argv){
     auto e=doCodee(str,n);
     VirtualMachine m;
     m.CreateCache(e);
-    m.exec(e, n);
+    m.exec(e, n, true);
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << std::endl;
         for (auto i:modules){
