@@ -13,22 +13,29 @@ func(ah)(arg){
     return(1);
 };
 func(aa)(ev){
-    if (ev==lib.CONSOLE_CTRL_C){
-        cmd("start ./m c.myl Child");
+    if (ev==lib.CONSOLE_CTRL_C && !spawned){
+        cmd("start ./m c.myl");
+        spawned=1;
+        running=0;
+        return(0);
     };
+    return(1);
 };
 lib.SetConsoleHook(aa);
 w.GrabMouse(1);
 lib.SetEventHook(ah);
+spawned=0;
 acc=0;
 for (;running;){
     dt=lib.getDelta();
     acc+=dt;
-    if ((!w.IsFocused()) && (argg[0]!="Child")){
-        cmd("start ./m c.myl Child");
+    if ((!w.IsFocused()) && (argg[0]!="Child") && !spawned){
+        running=0;
+        spawned=1;
+        cmd("start ./m c.myl");
         w.RaiseAbove();
     };
-    if (acc>5){
+    if (acc>20){
         running=0;
     };
     events=lib.GetEvents();

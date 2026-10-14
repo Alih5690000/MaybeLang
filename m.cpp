@@ -2,7 +2,7 @@
 #include <fstream>
 #include <string>
 #include <algorithm>
-#define DEBUG
+//#define DEBUG
 #include "classes.hpp"
 
 enum class Types{
@@ -95,10 +95,14 @@ bool OnlyName(const std::string& e){
 
 bool isOnlyOneLayerOfBrackets(const std::string& e){
     if (e[0]!='(') return false;
+    int bracketLevel=1;
     for (int j=1;j<e.size();j++){
         char i=e[j];
-        if (i=='(') return false;
-        if (i==')' && j!=e.size()-1) return false;
+        if (i=='(') bracketLevel++;
+        if (i==')') {
+            bracketLevel--;
+            if (bracketLevel==0 && j!=e.size()-1) return false;
+        }
     }
     return true;
 }
@@ -451,6 +455,12 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
         r.push_back(new Command{Types::NOT});
         return r;
     }
+    if (expression[0]=='"'){
+        return {new Command{Types::WRITE, {NULL}, expression}};
+    }
+    if (isOnlyOneLayerOfBrackets(expression)){
+        return parse(expression.substr(1, expression.size()-2), n);
+    }
     if (expression.starts_with("func(")){
         LOG("GOT FUNC");
         std::string name;
@@ -792,12 +802,6 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
             }
         }
         return res;
-    }
-    if (expression[0]=='"'){
-        return {new Command{Types::WRITE, {NULL}, expression}};
-    }
-    if (isOnlyOneLayerOfBrackets(expression)){
-        return parse(expression.substr(1, expression.size()-2), n);
     }
     if (hasNoOp(expression)){
         LOG("NO OP");
