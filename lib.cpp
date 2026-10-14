@@ -10,8 +10,8 @@ class SimpleWindow{
     SimpleWindow(std::string title, int w, int h){
         window=SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, 
             SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_SHOWN);
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         renderer=SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     }
     ~SimpleWindow(){
         SDL_DestroyWindow(window);
