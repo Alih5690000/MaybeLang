@@ -407,6 +407,12 @@ class VirtualMachine{
                 return context[exec({i->arg}, context)->str()];
             }
             }
+            catch (const ReturnSig& r){
+                throw r;
+            }
+            catch(const BreakSig& b){
+                throw b;
+            }
             catch (const std::exception& e){
                 std::cout<<"Error is:"<<e.what()<<
                     " While execing "<<currstr<<std::endl;

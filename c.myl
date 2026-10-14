@@ -18,7 +18,7 @@ func(aa)(ev){
     return(1);
 };
 font=lib.CreateFont("arialmt.ttf", 20);
-tt=font.CreateTxt(w, "Just wait 20 seconds bro", {r:0, g:0, b:0, a:255});
+tt=font.CreateTxt(w, "Just wait 10 seconds bro", {r:0, g:0, b:0, a:255});
 lib.SetConsoleHook(aa);
 w.GrabMouse(1);
 lib.SetEventHook(ah);
@@ -32,7 +32,7 @@ for (;running;){
         spawned=1;
         cmd("start ./m c.myl");
     };
-    if (acc>20){
+    if (acc>10){
         running=0;
     };
     events=lib.GetEvents();
