@@ -3,6 +3,7 @@
 #include <vector>
 #include <utility>
 #include <functional>
+#include <fstream>
 //#define DEBUG
 #include "memory.hpp"
 #ifdef __WIN32
@@ -438,6 +439,50 @@ class NativeFunctionObject:public BasicObj{
     Pointer<BasicObj> clone() override{
       return MakePtr<BasicObj>(new NativeFunctionObject(func));
     }
+};
+
+class FileObject:public BasicObj{
+  public:
+  std::fstream file;
+  std::string path;
+  void SetAttrs(){
+    attrs["Write"] = MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+        file.close();
+        file.open(path, std::ios::out); 
+        file.write(args[0]->str().c_str(), args[0]->str().size());
+        return MakePtr<BasicObj>(new IntObj(0));
+    }));
+    attrs["Read"] = MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+        file.close();
+        file.open(path, std::ios::in);
+        std::string str;
+        size_t size;
+        file.seekg(0, std::ios::end);
+        size=file.tellg();
+        str.resize(size);
+        file.seekg(0,std::ios::beg);
+        file.read(str.data(), size);
+        return MakePtr<BasicObj>(new StringObject(str));
+    }));
+    attrs["Append"] = MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+      file.close();
+      file.open(path, std::ios::app);
+      return MakePtr<BasicObj>(new IntObj(0));
+    }));
+    attrs["Close"] = MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+      file.close();
+      return MakePtr<BasicObj>(new IntObj(0));
+    }));
+  }
+  FileObject(std::string path){
+    SetAttrs();
+    this->path=path;
+    file.open(path);
+  }
+  Pointer<BasicObj> clone() override{
+    Pointer<BasicObj> res=MakePtr<BasicObj>(new FileObject(path));
+    return res;
+  }
 };
 
 class InstanceObject:public BasicObj{

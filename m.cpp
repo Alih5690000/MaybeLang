@@ -1052,6 +1052,11 @@ Namespace CreateContext(){
             return arr;
         })
     );
+    n["CreateFile"]=MakePtr<BasicObj>(
+        new NativeFunctionObject([](std::vector<Pointer<BasicObj>> args, Namespace& context){
+            return MakePtr<BasicObj>(new FileObject(args[0]->str()));
+        })
+    );
     return n;
 }
 
