@@ -1,2 +1,1 @@
-g++ -g main.cpp -o main
-gdb main
+g++ --shared lib.cpp -o library.dll -lSDL2 -lSDL2_image -lSDL2_ttf

@@ -1,5 +1,6 @@
 #include "classes.hpp"
 #include <SDL.h>
+#include <SDL2_ttf/SDL_ttf.h>
 #include <SDL2_image/SDL_image.h>
 
 class SimpleWindow{
@@ -9,6 +10,7 @@ class SimpleWindow{
     SimpleWindow(std::string title, int w, int h){
         window=SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, 
             SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_SHOWN);
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         renderer=SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     }
     ~SimpleWindow(){
@@ -74,6 +76,7 @@ class TextureObject:public BasicObj{
         txt=SDL_CreateTexture(w.renderer,
             SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,
             wi, h);
+        SDL_SetTextureBlendMode(txt, SDL_BLENDMODE_BLEND);
         SetAttrs();
         win=&w;
     }
@@ -87,6 +90,11 @@ class TextureObject:public BasicObj{
         SetAttrs();
         win=&w;
     }
+    TextureObject(SimpleWindow& w, SDL_Texture* t){
+        txt=t;
+        win=&w;
+        SetAttrs();
+    }
     Pointer<BasicObj> clone() override{
         SDL_Texture* prev=SDL_GetRenderTarget(win->renderer);
         int w,h;
@@ -95,7 +103,6 @@ class TextureObject:public BasicObj{
         SDL_SetRenderTarget(win->renderer, n->txt);
         SDL_RenderCopy(win->renderer, txt, NULL, NULL);
         SDL_SetRenderTarget(win->renderer, prev);
-        n->SetAttrs();
         return MakePtr<BasicObj>(n);
     }
     ~TextureObject(){
@@ -121,10 +128,10 @@ class RectObject:public BasicObj{
 };
 
 class WindowObject:public BasicObj{
+    public:
     Pointer<SimpleWindow> window;
     std::string title;
     int w,h;
-    public:
     void SetAttrs(){
         attrs["present"]=MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
             SDL_RenderPresent(window->renderer);
@@ -206,6 +213,45 @@ class WindowObject:public BasicObj{
     }
 };
 
+class FontObject:public BasicObj{
+    public:
+    TTF_Font* font;
+    std::string path;
+    int size;
+    void SetAttrs(){
+        attrs["CreateTxt"] = MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            if (args.size()!=3) THROW(ValueError, "Invalid arg count");
+            SDL_Surface* s=TTF_RenderText_Solid(font, args[1]->str().c_str(), {
+                (int)args[2]->getattr("r")->asInt(),
+                (int)args[2]->getattr("g")->asInt(),
+                (int)args[2]->getattr("b")->asInt(),
+                (int)args[2]->getattr("a")->asInt()
+            });
+            if (!s) THROW(ValueError, ("TTF_RenderText_Solid failed: "+std::string(TTF_GetError())).c_str());
+            WindowObject* w=dynamic_cast<WindowObject*>(args[0].get());
+            if (!w) {
+                SDL_FreeSurface(s);
+                THROW(ValueError, "First argument is not WindowObject");
+            }
+            SDL_Texture* t=SDL_CreateTextureFromSurface(w->window->renderer, s);
+            SDL_FreeSurface(s);
+            if (!t) THROW(ValueError, ("SDL_CreateTextureFromSurface failed: "+std::string(SDL_GetError())).c_str());
+            return MakePtr<BasicObj>(new TextureObject(*w->window.get(), t));
+        }));
+    }
+    FontObject(std::string path, int size){
+        font=TTF_OpenFont(path.c_str(), size);
+        if (!font) THROW(ValueError, ("TTF_OpenFont failed: "+std::string(TTF_GetError())).c_str());
+        this->path=path;
+        this->size=size;
+        SetAttrs();
+    }
+    Pointer<BasicObj> clone(){
+        auto pp=MakePtr<BasicObj>(new FontObject(path, size));
+        return pp;
+    }
+};
+
 Pointer<BasicObj> MakeEvent(SDL_Event e, Namespace& n){
     Pointer<BasicObj> o=
         MakePtr<BasicObj>(new InstanceObject(n));
@@ -273,6 +319,7 @@ std::vector<Data*> datas;
 IMPORT Namespace* Load(){
     SDL_Init(SDL_INIT_EVERYTHING);
     IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_WEBP);
+    if (TTF_Init()!=0) THROW(ValueError, ("TTF_Init failed: "+std::string(TTF_GetError())).c_str());
     Namespace* na=new Namespace;
     (*na)["Window"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
         if (args.size()<3) THROW(ValueError, "Invalid args count");
@@ -332,6 +379,10 @@ IMPORT Namespace* Load(){
         else{
             THROW(ValueError, "Invalid args count");
         }
+    }));
+    (*na)["CreateFont"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
+        if (args.size()!=2) THROW(ValueError, "Invalid args count");
+        return MakePtr<BasicObj>(new FontObject(args[0]->str(), args[1]->asInt()));
     }));
     (*na)["SetEventHook"]=MakePtr<BasicObj>(new NativeFunctionObject([](auto args, auto& n){
         Data* d = new Data{args, &n};

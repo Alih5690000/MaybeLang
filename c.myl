@@ -1,9 +1,6 @@
 import("library", "lib");
 w=lib.Window("lol", 1000, 800);
 w.SetFullscreen(1);
-if (argg.size()==0){
-    argg.push_back("null");
-};
 running=1;
 txt=lib.CreateTexture(w, "amogus.png");
 txt.flip=lib.FLIP_HORIZONTAL;
@@ -20,6 +17,8 @@ func(aa)(ev){
     };
     return(1);
 };
+font=lib.CreateFont("arialmt.ttf", 20);
+tt=font.CreateTxt(w, "lol", {r:0, g:0, b:0, a:255});
 lib.SetConsoleHook(aa);
 w.GrabMouse(1);
 lib.SetEventHook(ah);
@@ -39,5 +38,6 @@ for (;running;){
     };
     events=lib.GetEvents();
     txt.Draw(rr);
+    tt.Draw(lib.Rect(0,0,100,50));
     w.present();
 };
