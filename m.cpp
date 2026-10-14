@@ -446,7 +446,7 @@ class FunctionObjectt:public BasicObj{
       VirtualMachine vm;
       vm.CreateCache(body);
       try{
-        vm.exec(body, context, true);
+        vm.exec(body, context);
       }
       catch(ReturnSig& s){
         for (int i=0;i<params.size();i++){
