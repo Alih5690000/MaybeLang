@@ -1,7 +1,6 @@
 import("library", "lib");
 w=lib.Window("lol", 1000, 800);
 w.SetFullscreen(1);
-argg=GetArgs();
 if (argg.size()==0){
     argg.push_back("null");
 };
@@ -29,7 +28,7 @@ acc=0;
 for (;running;){
     dt=lib.getDelta();
     acc+=dt;
-    if ((!w.IsFocused()) && (argg[0]!="Child") && !spawned){
+    if ((!w.IsFocused()) && !spawned){
         running=0;
         spawned=1;
         cmd("start ./m c.myl");
