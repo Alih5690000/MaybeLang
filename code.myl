@@ -1,6 +1,9 @@
 print("thats ok");
 print("thats too");
-a.lmao();
+func(shi)(f){
+    print(aha);
+};
+shi(6);
 f=CreateFile("Ha.txt");
 f.Write("LOL");
 f.Close();

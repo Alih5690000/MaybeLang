@@ -205,12 +205,12 @@ Pointer<BasicObj> CreateFunctionObjectt
     std::vector<std::pair<std::string, int>> st);
 
 std::vector<std::pair<std::string, int>> strss;
+std::vector<std::string> trace;
 
 class VirtualMachine{
     public:
     std::vector<int> currjmp;
     std::map<std::string, int> jumps;
-    std::string currstr;
     int standingAt=0;
     void CreateCache(std::vector<Command*>& comms) {
         for (int i = 0; i < comms.size(); ++i) {
@@ -224,7 +224,7 @@ class VirtualMachine{
         std::vector<Pointer<BasicObj>> stack;
         Pointer<BasicObj> s;
         Pointer<BasicObj> s2;
-        currstr=strs[0].first;
+        std::string currstr=strs[0].first;
         std::vector<Command*> funcBody;
         int FuncStart, FuncEnd;
         std::vector<std::string> params;
@@ -401,7 +401,9 @@ class VirtualMachine{
                 for (auto j:i->args){
                     args.push_back(exec(j, context, strs));
                 }
+                trace.push_back(currstr);
                 auto r=callable->call(args, context);
+                trace.pop_back();
                 s=r;
             }
             if (i->type==Types::SETATTR){
@@ -426,6 +428,12 @@ class VirtualMachine{
             catch (const std::exception& e){
                 std::cout<<"Error:"<<e.what()<<" while execing "<<
                     currstr<<std::endl;
+                if (!trace.empty()){
+                    std::cout<<"Trace:";
+                    for (auto i:trace){
+                        std::cout<<i<<std::endl;
+                    }
+                }
                 std::_Exit(1);
             }
         }
