@@ -1,4 +1,8 @@
 import("library", "lib");
+func(g)(gg){
+    a.lmao();
+};
+g(1);
 w=lib.Window("lol", 1000, 800);
 w.SetFullscreen(1);
 running=1;

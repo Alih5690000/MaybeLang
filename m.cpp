@@ -201,15 +201,16 @@ Pointer<BasicObj> basicParse(std::string expression, Namespace& context){
 }
 
 Pointer<BasicObj> CreateFunctionObjectt
-    (const std::vector<std::string>& p, std::vector<Command*> b);
+    (const std::vector<std::string>& p, std::vector<Command*> b,
+    std::vector<std::pair<std::string, int>> st);
 
-std::vector<std::pair<std::string, int>> strs;
+std::vector<std::pair<std::string, int>> strss;
 
 class VirtualMachine{
     public:
     std::vector<int> currjmp;
     std::map<std::string, int> jumps;
-    std::string currstr=strs[0].first;
+    std::string currstr;
     int standingAt=0;
     void CreateCache(std::vector<Command*>& comms) {
         for (int i = 0; i < comms.size(); ++i) {
@@ -218,11 +219,14 @@ class VirtualMachine{
             }
         }
     }
-    Pointer<BasicObj> exec(std::vector<Command*>& comms, Namespace& context, bool master=false){
+    Pointer<BasicObj> exec(std::vector<Command*>& comms, 
+        Namespace& context, std::vector<std::pair<std::string, int>> strs, bool master=false){
         std::vector<Pointer<BasicObj>> stack;
         Pointer<BasicObj> s;
         Pointer<BasicObj> s2;
+        currstr=strs[0].first;
         std::vector<Command*> funcBody;
+        int FuncStart, FuncEnd;
         std::vector<std::string> params;
         bool isFuncBody=false;
         int layer=0;
@@ -248,8 +252,13 @@ class VirtualMachine{
                 } else if (i->type==Types::FUNC_END){
                     layer--;
                     if (layer==0){
+                        FuncEnd=standingAt;
                         isFuncBody=false;
-                        s=CreateFunctionObjectt(params, funcBody);
+                        std::vector<std::pair<std::string, int>> ss;
+                        for (int z=FuncStart;z<=FuncEnd;z++){
+                            ss.push_back(strss[z]);
+                        }
+                        s=CreateFunctionObjectt(params, funcBody, ss);
                         params.clear();
                         funcBody.clear();
                     } else {
@@ -265,6 +274,7 @@ class VirtualMachine{
                 isFuncBody=true;
                 params=splitBy(i->ar, ' ');
                 funcBody.clear();
+                FuncStart=standingAt;
                 continue;
             }
             if (i->type==Types::FUNC_END){
@@ -272,7 +282,7 @@ class VirtualMachine{
             }
             if (i->type==Types::JMP_IF){
                 LOG("JMP_IF DETECTED");
-                auto ll=exec(i->arg, context);
+                auto ll=exec(i->arg, context, strs);
                 LOG("JMP_IF COND IS "+ll->str());
                 currjmp.push_back(jumps[i->ar]);
                 if (!ll->asbool()){
@@ -281,7 +291,7 @@ class VirtualMachine{
             }
             if (i->type==Types::JMP_IF_NOT){
                 LOG("JMP_IF_NOT DETECTED");
-                auto ll=exec(i->arg, context);
+                auto ll=exec(i->arg, context, strs);
                 LOG("JMP_IF_NOT COND IS "+ll->str());
                 LOG("BEFORE J IS "+std::to_string(j));
                 currjmp.push_back(jumps[i->ar]);
@@ -309,42 +319,42 @@ class VirtualMachine{
                 std::swap(s, stack.back());
             }
             if (i->type==Types::ADD){
-                auto arg = exec(i->arg, context);
+                auto arg = exec(i->arg, context, strs);
                 s = s->add(arg, false);
             }
             if (i->type==Types::SUB){
-                auto arg = exec(i->arg, context);
+                auto arg = exec(i->arg, context, strs);
                 s = s->sub(arg, false);
             }
             if (i->type==Types::DIV){
-                auto arg = exec(i->arg, context);
+                auto arg = exec(i->arg, context, strs);
                 s = s->div(arg, false);
             }
             if (i->type==Types::MUL){
-                auto arg = exec(i->arg, context);
+                auto arg = exec(i->arg, context, strs);
                 s = s->mul(arg, false);
             }
             if (i->type==Types::LESS){
-                auto arg = exec(i->arg, context);
+                auto arg = exec(i->arg, context, strs);
                 s = MakePtr<BasicObj>(new BoolObject(s->less(arg, false)));
             }
             if (i->type==Types::GREATER){
-                auto arg = exec(i->arg, context);
+                auto arg = exec(i->arg, context, strs);
                 s = MakePtr<BasicObj>(new BoolObject(s->greater(arg, false)));
             }
             if (i->type==Types::EQUAL){
-                auto arg = exec(i->arg, context);
+                auto arg = exec(i->arg, context, strs);
                 s = MakePtr<BasicObj>(new BoolObject(s->equal(arg, false)));
             }
             if (i->type==Types::NOT){
                 s = MakePtr<BasicObj>(new BoolObject(!s->asbool()));
             }
             if (i->type==Types::AND){
-                auto arg = exec(i->arg, context);
+                auto arg = exec(i->arg, context, strs);
                 s = MakePtr<BasicObj>(new BoolObject(s->asbool() && arg->asbool()));
             }
             if (i->type==Types::OR){
-                auto arg = exec(i->arg, context);
+                auto arg = exec(i->arg, context, strs);
                 s = MakePtr<BasicObj>(new BoolObject(s->asbool() || arg->asbool()));
             }
             if (i->type==Types::WRITE){
@@ -360,7 +370,7 @@ class VirtualMachine{
                     LOG("WRITING TO S "+i->ar);
                 }
                 else{
-                    s=exec(i->arg, context);
+                    s=exec(i->arg, context, strs);
                 }
                 LOG("WROTE NOW S IS "+s->str());
             }
@@ -368,7 +378,7 @@ class VirtualMachine{
                 if (i->arg[0]==NULL)
                     s2=basicParse(i->ar, context);
                 else
-                    s2=exec(i->arg, context);
+                    s2=exec(i->arg, context, strs);
             }
             if (i->type==Types::GETATTR){
                 LOG("GETTING ATTR "+i->ar);
@@ -376,10 +386,10 @@ class VirtualMachine{
                 s=e;
             }
             if (i->type==Types::SETITEM){
-                s->setitem(exec(i->args[0], context), exec(i->args[1], context));
+                s->setitem(exec(i->args[0], context, strs), exec(i->args[1], context, strs));
             }
             if (i->type==Types::GETITEM){
-                auto k=exec(i->arg, context);
+                auto k=exec(i->arg, context, strs);
                 LOG("K IS "+k->str());
                 auto e=s->getitem(k);
                 s=e;
@@ -389,14 +399,14 @@ class VirtualMachine{
                 auto callable=s;
                 std::vector<Pointer<BasicObj>> args;
                 for (auto j:i->args){
-                    args.push_back(exec(j, context));
+                    args.push_back(exec(j, context, strs));
                 }
                 auto r=callable->call(args, context);
                 s=r;
             }
             if (i->type==Types::SETATTR){
                 LOG("SETTING ATTR "+i->ar);
-                auto aa=exec(i->arg, context);
+                auto aa=exec(i->arg, context, strs);
                 LOG("SETTING ATTR TO "+aa->str());
                 s->setattr(i->ar, aa);
             }
@@ -404,7 +414,7 @@ class VirtualMachine{
                 context[i->ar]=s->clone();
             }
             if (i->type==Types::GET){
-                return context[exec({i->arg}, context)->str()];
+                return context[exec({i->arg}, context, strs)->str()];
             }
             }
             catch (const ReturnSig& r){
@@ -414,8 +424,8 @@ class VirtualMachine{
                 throw b;
             }
             catch (const std::exception& e){
-                std::cout<<"Error is:"<<e.what()<<
-                    " While execing "<<currstr<<std::endl;
+                std::cout<<"Error:"<<e.what()<<" while execing "<<
+                    currstr<<std::endl;
                 std::_Exit(1);
             }
         }
@@ -427,14 +437,16 @@ class FunctionObjectt:public BasicObj{
   public:
     std::vector<std::string> params;
     std::vector<Command*> body;
-    FunctionObjectt(const std::vector<std::string>& p, std::vector<Command*> b):params(p),body(b){
+    std::vector<std::pair<std::string, int>> st;
+    FunctionObjectt(const std::vector<std::string>& p, 
+        std::vector<Command*> b, std::vector<std::pair<std::string, int>> s)
+        :params(p),body(b),st(s){
       for (auto i:params){
         LOG("Param "+i);
       }
     };
 
     Pointer<BasicObj> call(std::vector<Pointer<BasicObj>> args,Namespace& context) override{
-      
       if (args.size()!=params.size()) THROW(ValueError, "Incorrect number of arguments");
       std::vector<Pointer<BasicObj>> olds;
       for (auto i:params){
@@ -446,7 +458,7 @@ class FunctionObjectt:public BasicObj{
       VirtualMachine vm;
       vm.CreateCache(body);
       try{
-        vm.exec(body, context);
+        vm.exec(body, context, st, false);
       }
       catch(ReturnSig& s){
         for (int i=0;i<params.size();i++){
@@ -461,13 +473,14 @@ class FunctionObjectt:public BasicObj{
     }
 
     Pointer<BasicObj> clone() override{
-      return MakePtr<BasicObj>(new FunctionObjectt(params,body));
+      return MakePtr<BasicObj>(new FunctionObjectt(params,body,st));
     }
 };
 
 Pointer<BasicObj> CreateFunctionObjectt
-    (const std::vector<std::string>& p, std::vector<Command*> b){
-    Pointer<BasicObj> f=MakePtr<BasicObj>(new FunctionObjectt(p, b));
+    (const std::vector<std::string>& p, std::vector<Command*> b, 
+        std::vector<std::pair<std::string, int>> st){
+    Pointer<BasicObj> f=MakePtr<BasicObj>(new FunctionObjectt(p, b, st));
     return f;
 }
 
@@ -975,12 +988,12 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
 }
 
 std::vector<Command*> doCodee(std::string s, Namespace& n){
-    strs.clear();
+    strss.clear();
     std::vector<Command*> res;
     auto a=splitBy(s, ';');
     for (auto i:a){
         auto k=parse(i, n);
-        strs.push_back({i, k.size()});
+        strss.push_back({i, k.size()});
         for (auto j:k){
             res.push_back(j);
         }
@@ -1116,7 +1129,7 @@ int main(int argc, char** argv){
     auto e=doCodee(str,n);
     VirtualMachine m;
     m.CreateCache(e);
-    m.exec(e, n, true);
+    m.exec(e, n, strss, true);
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << std::endl;
         for (auto i:modules){
