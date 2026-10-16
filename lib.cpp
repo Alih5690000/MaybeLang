@@ -196,6 +196,11 @@ class WindowObject:public BasicObj{
             SDL_SetWindowGrab(window->window, (SDL_bool)args[0]->asbool());
             return MakePtr<BasicObj>(new IntObj(0));
         }));
+        attrs["AlwaysOnTop"]= MakePtr<BasicObj>(new NativeFunctionObject([this](auto args, auto& n){
+            if (args.size()!=1) THROW(ValueError, "Invalid arg count");
+            SDL_SetWindowAlwaysOnTop(window->window, (SDL_bool)args[0]->asbool());
+            return MakePtr<BasicObj>(new IntObj(0));
+        }));
     }
     WindowObject(std::string title, int w, int h){
         window=MakePtr(new SimpleWindow(title, w, h));

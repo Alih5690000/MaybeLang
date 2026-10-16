@@ -1,8 +1,4 @@
 import("library", "lib");
-func(g)(gg){
-    a.lmao();
-};
-g(1);
 w=lib.Window("lol", 1000, 800);
 w.SetFullscreen(1);
 running=1;
@@ -25,6 +21,7 @@ font=lib.CreateFont("arialmt.ttf", 20);
 tt=font.CreateTxt(w, "Just wait 10 seconds bro", {r:0, g:0, b:0, a:255});
 lib.SetConsoleHook(aa);
 w.GrabMouse(1);
+w.AlwaysOnTop(1);
 lib.SetEventHook(ah);
 spawned=0;
 acc=0;
