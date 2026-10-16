@@ -5,11 +5,6 @@
 //#define DEBUG
 #include "classes.hpp"
 
-
-#define THROW(exceptionType, message) \
-    throw exceptionType(std::string(message).c_str())
-
-
 enum class Types{
     ADD,
     SUB,
@@ -224,13 +219,13 @@ class VirtualMachine{
         std::vector<Pointer<BasicObj>> stack;
         Pointer<BasicObj> s;
         Pointer<BasicObj> s2;
-        std::string currstr=strs[0].first;
+        std::string currstr=strs[standingAt].first;
         std::vector<Command*> funcBody;
         int FuncStart, FuncEnd;
         std::vector<std::string> params;
         bool isFuncBody=false;
         int layer=0;
-        int target=strs[0].second;
+        int target=strs[standingAt].second;
         std::string jmp;
         bool back=false;
         s=MakePtr<BasicObj>(new EmptyObject);
@@ -755,7 +750,8 @@ std::vector<Command*> parse(std::string expression, Namespace& n){
     if (startsWithOnlyName(expression, rem, beg) && (hasNoOp(expression) || has)){
         LOG("STARTSWITHONLYNAME "+beg+" "+rem);
         std::vector<Command*> res;
-        if (!has)
+        if (!has || (!rem.empty() &&
+            (rem[0]=='.' || rem[0]=='[' || rem[0]=='(')))
             res.push_back(new Command{Types::WRITE, parse(beg, n)});
         char op;
         std::string curr;
@@ -1135,9 +1131,10 @@ int main(int argc, char** argv){
     file.seekg(0,std::ios::beg);
     file.read(str.data(), size);
     auto e=doCodee(str,n);
+    auto re=strss;
     VirtualMachine m;
     m.CreateCache(e);
-    m.exec(e, n, strss, true);
+    m.exec(e, n, re, true);
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << std::endl;
         for (auto i:modules){

@@ -13,6 +13,9 @@
 #define IMPORT
 #endif
 
+#define THROW(exceptionType, message) \
+    throw exceptionType(std::string(message).c_str())
+
 class NotAvailable:public std::exception{
   public:
   std::string mes;

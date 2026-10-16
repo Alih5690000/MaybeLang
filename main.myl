@@ -1,0 +1,27 @@
+import("library", "lib");
+w=lib.Window("Game", 1000, 800);
+running=1;
+rect=lib.Rect(0,0,100,100);
+for (;running;){
+    dt=lib.getDelta();
+    e=lib.GetEvents();
+    for (i=0;i<e.size();i+=1){
+        if (e[i].type=="QUIT"){
+            running=0;
+        };
+    };
+    if (lib.isPressed("w")){
+        rect.y=rect.y-200*dt;
+    };
+    if (lib.isPressed("s")){
+        rect.y=rect.y+200*dt;
+    };
+    if (lib.isPressed("a")){
+        rect.x=rect.x-200*dt;
+    };
+    if (lib.isPressed("d")){
+        rect.x=rect.x+200*dt;
+    };
+    w.drawRect(rect, [255, 0, 0, 255]);
+    w.present();
+};
